@@ -1,0 +1,87 @@
+﻿<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+    <meta charset="utf-8" name="description" content="Demoticks.tf is a utility that allows the user to find relevant events in their recent Team Fortress 2 matches uploaded to logs.tf.
+                It is mostly meant to simplify the workflow of finding points of interest in Team Fortress 2 demo files." />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="mainstyle.css" />
+    <title>About</title>
+</head>
+<body>
+    <div class="bar">
+        <a href="/">
+            <img src="/images/demoticks_logo.png" id="logoImage" height="100" class="center" alt="Demoticks"/>
+        </a>
+    </div>
+    <div class="container about">
+        <div class="content">
+            <div class="list">
+                <h3>About</h3>
+                Demoticks.tf is a utility that allows the user to find relevant events in their recent Team Fortress 2 matches uploaded to logs.tf.
+                It is mostly meant to simplify the workflow of finding points of interest in Team Fortress 2 demo files.<br />
+            </div>
+            <div class="list">
+                <h3>Contact</h3>
+                <ul>
+                    <li>
+                        <h3>Bv</h3>
+                        <p>Founder and developer of demoticks.tf</p>
+                        <ul class="zooom">
+                            <li><a href="https://steamcommunity.com/id/thebv/">Steam</a></li>
+
+                            <li><a href="https://www.teamfortress.tv/user/Bv">Teamfortess.tv</a></li>
+
+                            <li><a href="mailto:demoticks@henru.de">E-Mail</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            <div class="list">
+                <h3>API</h3>
+                Demoticks.tf provides a GraphQL API with three major functions:<br />
+
+                <ul>
+                    <li>
+                        <h4>AddLog</h4>
+                        Allows adding a logfile by id to the demoticks.tf database.
+                    </li>
+                    <li>
+                        <h4>SearchPlayer</h4>
+                        Enables the search through any tf2 player by name, Steam64ID or Steam3ID.<br />
+                        This only works for people registerd to either etf2l.org, ozfortress.com or logs.tf the name returned also derives in that order.<br />
+                        <b>The RGL API is currently not used since it's slow and also being worked on.</b>
+                    </li>
+                    <li>
+                        <h4>SearchEvents</h4>
+                        Enables the search through the database of events by various search terms.
+                    </li>
+                </ul>
+                <br />
+                The URL and schema can be found here: <a href="/Schema.txt">Schema</a> | <a href="/graphQL">demoticks.tf/graphQL</a>
+            </div>
+        </div>
+        <footer class="footer_about">
+            <div style="text-align:right;padding-right:20px">
+                <h2>
+                    <a style="text-decoration: none;padding-right:20px" href="/files">
+                        Files
+                    </a>
+                    <a style="text-decoration: none;padding-right:20px" href="/search">
+                        Search
+                    </a>
+                    <a style="text-decoration: none;padding-right:20px" href="/privacy">
+                        Privacy
+                    </a>
+                    <a style="text-decoration: none" href="/about">
+                        About
+                    </a>
+
+                </h2>
+            </div>
+
+        </footer>
+    </div>
+
+</body>
+</html>

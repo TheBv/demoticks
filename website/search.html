@@ -1,0 +1,238 @@
+﻿<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+    <meta charset="utf-8" name="description" content="Demoticks.tf is a utility that allows the user to find relevant events in their recent Team Fortress 2 matches uploaded to logs.tf.
+                It is mostly meant to simplify the workflow of finding points of interest in Team Fortress 2 demo files. The user can enter their name/steamid and a date range and receive events from their matches" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="mainstyle.css" />
+    <title>Search</title>
+</head>
+<body>
+    <div class="bar">
+        <a href="/">
+            <img src="/images/demoticks_logo.png" alt="Demoticks" id="logoImage" height="100" class="center" />
+        </a>
+    </div>
+    <div class="container main">
+        <div class="content">
+            <div class="input">
+                <table class="top">
+                    <tbody>
+                        <tr>
+                            <td class="players">
+                                <div class="player_header">
+                                    <h3>Players</h3>
+                                </div>
+                                <table class="playerlist" id="playerTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Steam64 Id</th>
+                                            <th></th>
+                                            <th>Player Name</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyp">
+                                        <tr>
+                                            <td>
+                                                <input type="text" oninput="getPlayerNameFromSteam64(this)" />
+                                            </td>
+                                            <td class="spinner">
+                                                <div name="requestingPlayerName" class="cube1" hidden></div>
+                                                <div name="requestingPlayerName" class="cube2" hidden></div>
+                                            </td>
+                                            <td>
+                                                <input list="playernames" id="inputValues" type="text" name="userName" onblur="insertSteamId(this);insertPlayers()" oninput="updateDatalist(this)" />
+                                            </td>
+                                            <td>
+                                                <a class="button add" onclick="addPlayer(this)">+</a>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <datalist id="playernames"></datalist>
+
+                            </td>
+                            <td class="date" style="vertical-align:top">
+                                <div class="date_header">
+                                    <h3>Date</h3>
+                                </div>
+                                <table class="datebox">
+                                    <thead>
+                                        <tr>
+                                            <th>Start</th>
+                                            <th>End</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <div class="playertext"><input type="date" min="2012-01-01" id="startdate" /></div>
+                                            </td>
+                                            <td>
+                                                <div class="playertext"><input type="date" min="2012-01-01" id="enddate" /></div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
+                            <td class="exclude" style="vertical-align:top">
+                                <div class="exclude_header">
+                                    <h3>Exclude</h3>
+                                </div>
+                                <div class="checkboxes">
+                                    <label>
+                                        2v2
+                                        <input type="checkbox" id="2v2" />
+                                    </label>
+                                    <br />
+                                    <label>
+                                        6v6
+                                        <input type="checkbox" id="6v6" />
+                                    </label>
+                                    <br />
+                                    <label>
+                                        9v9
+                                        <input type="checkbox" id="9v9" />
+                                    </label>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <br />
+                <br />
+                <div>
+                    <div class="findevents">
+                        <div class="events_header">
+                            <h3>Find Events</h3>
+                        </div>
+                        <div style="text-align: left;">
+                            <div class="button tab selected" onclick="selectTab(this)">NA</div><div class="button tab append" onclick="addEvent(this)">+</div>
+                        </div>
+                        <div id="events">
+                            <table class="table dropdown" id="eventTable">
+                                <tbody>
+                                    <tr><td style="text-align:left"><a class="button remove event" onclick="removeEvent(this)">x</a></td></tr>
+                                    <tr>
+                                        <td>
+                                            <div class="form-select customform">
+                                                <select onchange="updateEvents();updateTab()">
+                                                    <option value="NA">Select Event</option>
+                                                    <option value="KS">Killstreaks</option>
+                                                    <option value="HS">Headshots</option>
+                                                    <option value="AS">Airshots</option>
+                                                    <option value="MD">Medic Drop</option>
+                                                    <option value="BS">Backstab</option>
+                                                    <option value="MK">Medic Kill</option>
+                                                    <option value="K">Kill</option>
+                                                </select>
+                                            </div>
+                                        </td>
+                                        <td> <a class="button add" onclick="addJointEvent(this)">&</a></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                    <div class="doneby">
+                        <div class="events_header">
+                            <h3>Done by</h3>
+                        </div>
+                        <table class="table dropdown" id="attackerTable" style="margin-top:42.1px;">
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div class="form-select customform">
+                                            <select>
+                                                <option value="players">Players</option>
+                                                <option value="anyone">Anyone</option>
+                                            </select>
+                                        </div>
+                                    </td>
+                                    <td> <a class="button add" onclick="addTarget(this)">+</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="towards">
+                        <div class="events_header">
+                            <h3>Towards</h3>
+                        </div>
+                        <table class="table dropdown" id="victimTable" style="margin-top:42.1px;">
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div class="form-select customform">
+                                            <select>
+                                                <option value="players">Players</option>
+                                                <option value="anyone" selected="selected">Anyone</option>
+                                            </select>
+                                        </div>
+                                    </td>
+                                    <td> <a class="button add" onclick="addTarget(this)">+</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="button start" onclick="startSearch()">Start</div>
+
+            </div>
+            <div class="output">
+                <h4 class="center">Found/Received </h4>
+                <p id="Count" style="float: left;">0/0</p>
+                <div class="spinner" style="float: left;margin:0px 0px 0px 3px;">
+                    <div name="requestingLogs" class="cube1" style="margin-top: 13px;" hidden></div>
+                    <div name="requestingLogs" class="cube2" style="margin-top: 13px;" hidden></div>
+                </div>
+                <br />
+                <table class="table outputtable" id="outputTable">
+                    <thead>
+                        <tr></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        <footer class="footer">
+            <div style="text-align:right;padding-right:20px">
+                <h2>
+                    <a style="text-decoration: none;padding-right:20px" href="/files" hidden>
+                        Settings
+                    </a>
+                    <a style="text-decoration: none;padding-right:20px" href="/files">
+                        Files
+                    </a>
+                    <a style="text-decoration: none;padding-right:20px" href="/search">
+                        Search
+                    </a>
+                    <a style="text-decoration: none;padding-right:20px" href="/privacy">
+                        Privacy
+                    </a>
+                    <a style="text-decoration: none" href="/about">
+                        About
+                    </a>
+                </h2>
+            </div>
+            <div hidden>
+                Main-color:<input type="color" id="html5colorpicker" onchange="clickColor(0, -1, -1, 5)" value="--main-color" style="width:40%;">
+                Secondary-color:<input type="color" id="html5colorpicker" onchange="clickColor(0, -1, -1, 5)" value="--main-color" style="width:40%;">
+            </div>
+        </footer>
+    </div>
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="js/tableCreator.js"></script>
+    <script src="js/graphQl.js"></script>
+    <script src="js/sharedGraphQL.js"></script>
+    <script src="js/utilities.js"></script>
+    <script src="js/search.js"></script>
+    <script src="js/colors.js"></script>
+</body>
+</html>
