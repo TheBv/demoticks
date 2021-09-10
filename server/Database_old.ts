@@ -1,3 +1,5 @@
+import { stringify } from "querystring";
+
 const mysql = require("mysql");
 const config = require("./config");
 const request = require("request");
@@ -19,9 +21,9 @@ function requestPromise(url : String) {
         try {
             requestRetry({
                 url: url,
-                maxAttempts: 100,
+                maxAttempts: 20,
                 retryDelay: 1000,
-                retryStrategy: retryStrategy
+                retryStrategy: normalRetry
             }, function (error, response, body) {
                 if (response && response.statusCode === 200) {
                     resolve(body);
@@ -42,9 +44,9 @@ function requestPromiseJson(url: String) {
             requestRetry({
                 url: url,
                 json: true,
-                maxAttempts: 100,
+                maxAttempts: 20,
                 retryDelay: 1000,
-                retryStrategy: myJSONRetryStrategy
+                retryStrategy: JSONRetry
             }, function (error, response, body) {
                 if (response && response.statusCode === 200) {
                     resolve(body);
@@ -59,10 +61,10 @@ function requestPromiseJson(url: String) {
         }
     });
 }
-function retryStrategy(err, response) {
+function normalRetry(err, response) : boolean {
     return !!err || (response.statusCode >= 300 && response.statusCode < 500) || response.statusCode > 500;
 }
-function myJSONRetryStrategy(err, response, body) {
+function JSONRetry(err, response, body) : boolean {
     if (typeof body !== "object") {
         return true;
     }
@@ -126,11 +128,12 @@ function getName(steam64) { //Uses the steam64 id and looksup the corresponding 
         }
     });
 }
+
 function getEtf2lName(steam64) {
     return new Promise(function (resolve, reject) {
         requestPromiseJson(`https://api.etf2l.org/player/${steam64}.json`).then(body => {
             try {
-                 resolve(body.player.name);
+                 //resolve(body.player.name);
             }catch {
                 reject();
             }
@@ -143,7 +146,7 @@ function getOzFortressName(steam64) {
         requestPromise(`https://ozfortress.com/users?q=${steam64}` ).then(body => {
             try {
                 const parser = new DOMParser();
-                const dom = parser.parseFromString(body);
+                const dom = parser.parseFromString(body.toString(),"text/html");
                 const name = dom.getElementsByClassName("row slim-gutter")[0].getElementsByTagName("a")[0].textContent;
                 resolve(name);
             }
@@ -158,7 +161,8 @@ function getLogstfName(steam64) {
         requestPromise(`https://logs.tf/profile/${steam64}` ).then(body => {
             try {
                 const parser = new DOMParser();
-                const dom = parser.parseFromString(body);
+                
+                const dom = parser.parseFromString(body.toString(),"text/html");
                 const name = dom.getElementsByClassName("log-header")[0].getElementsByTagName("h3")[0].textContent.toString();
                 const SteamId = require("steamid");
                 const steam3 = new SteamId(steam64).getSteam3RenderedID();
@@ -213,9 +217,9 @@ async function insertIntoDatabase(logid, databaseName = config.MySQLdatabase) { 
                     }).then(async function (text) {
                         text = text.split('\n');
                         try {
-                            LogParser.parseLines(text, logid, databaseName).mysql().then(function () {
-                                resolve(true);
-                            }).catch(error => { console.log("This probably broke things: " + error); });
+                            //LogParser.parseLines(text, logid, databaseName).mysql().then(function () {
+                            //    resolve(true);
+                            //}).catch(error => { console.log("This probably broke things: " + error); });
                         }
                         catch (err) { //Need to save the logs that don't work to file
                             console.log(err);

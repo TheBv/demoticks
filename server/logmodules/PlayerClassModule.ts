@@ -24,7 +24,7 @@ interface IWeaponStats {
     hits: number
 }
 
-class PlayerClassModule implements events.IStats {
+export class PlayerClassModule implements events.IStats {
     public identifier: string
     private players: Map<string, Map<string, IClassStats>>
     private gameState: IGameState
@@ -222,7 +222,7 @@ class PlayerClassModule implements events.IStats {
         })
     }
 
-    toJSON(): IMysqlPlaysInClasses {
+    toJSON(): void {
         //return this.players
     }
 }

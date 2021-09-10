@@ -5,15 +5,15 @@ var test = "";
 insertPlayers();
 randomImage();
 
-ResponseIssues = {
+const ResponseIssues = {
     noRetry: 0,
     noResponse: 1
 };
 
-function steamIds() {//returns a couple of steamIds for testing
+const steamIds = function() {//returns a couple of steamIds for testing
     return ["76561198048943710", "76561198097506221", "76561198011936672"]; //Bv,Kosuke,Cinder
-}
-function addPlayer(_this) { //logic behind addPlayer could create Template instead?
+};
+const addPlayer = function(_this) { //logic behind addPlayer could create Template instead?
     const table = $("#playerTable").children("tbody")[0];
     if (table.rows.length <= 8) {
         const clone = $(_this).parent().parent()[0].cloneNode(true);
@@ -24,8 +24,8 @@ function addPlayer(_this) { //logic behind addPlayer could create Template inste
         button.setAttribute("onclick", "removePlayer(this)");
         table.appendChild(clone);
     }
-}
-function addTarget(_this) {
+};
+const addTarget = function(_this) {
     const a = document.createElement("a");
     a.setAttribute("class", "button add");
     a.setAttribute("onclick", "addTarget(this)");
@@ -289,7 +289,7 @@ async function startSearch() {
         }
     });
     if (data !== undefined) { //Maybe do a lot more of the table coloring with css. Would make this a lot nicer
-        data = data.SearchEvents;
+        data = data.event;
         const eventTable = new TableCreator("table outputtable", "outputTable");
         const eventSorting = ["tick", ""].concat(searchQuery.events.map(event => { return event.getAlias(); }));
         eventTable.addHeader(["Date","Map"].concat(searchQuery.events.map(event => { return event.getAlias(); })));

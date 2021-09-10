@@ -1,10 +1,10 @@
 ﻿var players = [];
 
 class SearchQuery {
-    attackers = []//array of steamIds
-    victims = []//array of steamIds
-    logIds = []//array of logIds
-    events = []
+    attackers = []; //array of steamIds
+    victims = []; //array of steamIds
+    logIds = []; //array of logIds
+    events = [];
     constructor(attackers = [null], victims = [null], logIds = [null], events = [null]) {
         this.attackers = attackers;
         this.victims = victims;
@@ -24,20 +24,21 @@ class SearchQuery {
         this.events = events;
     }
     toQuery() {
-        let query = `{SearchEvents(input: {logid: [${this.logIds}]`;
-        if (!this.attackers.includes(null)) {
-            query += `attacker: ["${this.attackers.join(`", "`)}"]`;
-        }
-        if (!this.victims.includes(null)) {
-            query += `victim: ["${this.victims.join(`", "`)}"]`;
-        }
+        let query = `{event(logid: [${this.logIds}]`;
+
         let queryInput = "";
         let queryOutput = "";
+        if (!this.attackers.includes(null)) {
+            queryInput += `attacker: "${this.attackers.join(`", "`)}"`;
+        }
+        if (!this.victims.includes(null)) {
+            queryInput += `victim: ["${this.victims.join(`", "`)}"]`;
+        }
         for (event of this.events) {
             queryInput += event.toInput();
             queryOutput += event.toOutput();
         }
-        query += `orEvents:{${queryInput}}}) { logid date events{ attacker ${queryOutput} tick } map}}`;
+        query += `events:{${queryInput}}) { logid date events{ attacker ${queryOutput} tick }}}`;
         console.log(query);
         return query;
     }
@@ -102,7 +103,7 @@ class Event {
 }
 
 
-function getPlayers() { //Needs updating
+const getPlayers =function() { //Needs updating
     return new Promise(function (resolve, reject) {
         let playerarray = [];
         let table = $("#playerTable").children("tbody")[0];
@@ -114,9 +115,9 @@ function getPlayers() { //Needs updating
                     checkagainst = players[player].steam64;
                 }
                 if (table.rows[player].cells[0].getElementsByTagName("input")[0].value !== checkagainst) {
-                    promises.push(queryData("{SearchPlayers(input: {steam64: \"" + table.rows[player].cells[0].getElementsByTagName("input")[0].value + "\"}) {steam64 name steamId3}}").then(function (data) {
-                        playerarray.push(data.SearchPlayers[0]);
-                    }).catch(() => { console.log("Invalid SearchInput"); }));
+                    promises.push(queryData("{player(steam64: \"" + table.rows[player].cells[0].getElementsByTagName("input")[0].value + "\") {steam64 etf2lName steamId3}}").then(function (data) {
+                        playerarray.push(data.player[0]);
+                    }).catch((err) => { console.log("Invalid SearchInput",err); }));
                 }
                 else if (players[player] !== undefined) {
                     playerarray.push(players[player]);
@@ -130,24 +131,26 @@ function getPlayers() { //Needs updating
             resolve(playerarray);
         });
     });
-}
+};
 //Returns the playername from a given steamid3
-function getPlayerName(steamId3) { //Will be replaced with global player class
-    for (let player of players) {
+const getPlayerName = function(steamId3) { //Will be replaced with global player class
+    for (const player of players) {
         if (player.steamId3 === steamId3){
             return player.name;
         }
     }
-}
-function getPlayerNameFromSteam64(_this) {
+    return null;
+};
+
+const getPlayerNameFromSteam64 = function(_this) {
     if (_this.value.length === 17) {
-        let cubes = $('div[name="requestingPlayerName"]');
-        let name = _this.parentNode.parentNode.getElementsByTagName("td")[2].getElementsByTagName("input")[0];
-        let querry = `{SearchPlayers(input: { steam64: "` + _this.value + `" }) {name}}`;
+        const cubes = $('div[name="requestingPlayerName"]');
+        const name = _this.parentNode.parentNode.getElementsByTagName("td")[2].getElementsByTagName("input")[0];
+        const querry = `{player(input: { steam64: "${_this.value}" }) {etf2lName}}`;
         cubes.show();
         queryData(querry).then(function (data) {
-            if (data["SearchPlayers"].length !== 0) {
-                name.value = data["SearchPlayers"][0]["name"];
+            if (data["player"].length !== 0) {
+                name.value = data["player"][0]["etf2lName"];
                 cubes.hide();
             }
 
@@ -160,7 +163,7 @@ function insertSteamId(_this) {
     const steamIdNeighbour = _this.parentNode.parentNode.getElementsByTagName("td")[0].getElementsByTagName("input")[0];
     if (returnedPlayers.length !== undefined) {
         for (const data of returnedPlayers) {
-            if (data["name"] === name){
+            if (data["etf2lName"] === name){
                 steamIdNeighbour.value = data["steam64"];
             }
         }
@@ -178,11 +181,12 @@ function insertSteamId(_this) {
     return steam3Array;
 }*/
 
-function updateDatalist(_this) { //Needs updating
+const updateDatalist = function(_this) { //Needs updating
     if (_this.value.length >= 2) {
-        let querry = `{SearchPlayers(input: { name: "` + _this.value + `" }) {steam64 name}}`;
+        let querry = `{player(etf2lName: "${_this.value}" ) {steam64 etf2lName}}`;
         queryData(querry).then(function (data) {
-            data = data["SearchPlayers"];
+            console.log(data);
+            data = data["player"];
             if (data !== null) {
                 let list = $("#playernames")[0];//_this.parentNode.getElementsByTagName("datalist")[0];
                 returnedPlayers = new Object(); //This isn't useless returnedPlayers is a var in search (Do need to change that though)
@@ -191,15 +195,15 @@ function updateDatalist(_this) { //Needs updating
                 let names = [];
                 for (let index in data) {
                     let option = document.createElement("option");
-                    let name = data[index]["name"];
+                    let name = data[index]["etf2lName"];
                     if (!names.includes(name)) {
-                        names.push(data[index]["name"]);
+                        names.push(data[index]["etf2lName"]);
                         option.value = name;
                     }
                     else {
-                        let newName = data[index]["name"] + "(" + names.filter(i => i === name).length + ")";
+                        let newName = data[index]["etf2lName"] + "(" + names.filter(i => i === name).length + ")";
                         names.push(newName);
-                        data[index]["name"] = newName;
+                        data[index]["etf2lName"] = newName;
                         option.value = newName;
                     }
                     list.appendChild(option);
@@ -209,16 +213,17 @@ function updateDatalist(_this) { //Needs updating
     }
 }
 
-function addEvents(logs, chunkSize, callbackFunction = function () { }) { //Use async/await
+const addEvents = function(logs, chunkSize, callbackFunction = function () {}) { //Use async/await
     return new Promise(function (resolve, reject) {
         try {
-            let chunks = chunkArray(logs, chunkSize);
+            const chunks = chunkArray(logs, chunkSize);
             new Promise(function (resolve, reject) {
-                let promises = [];
-                for (let index in chunks) {
-                    query = `{AddLog(input: { logid: [${chunks[index].toString()}] })}`;
-                    promises.push(queryData(query).then(function (result) {
-                        callbackFunction(chunks[index].length, 1);
+                const promises = [];
+                for (const chunk of chunks) {
+                    const query = `{addLog(logid: [${chunk.toString()}] )}`;
+                    console.log(query);
+                    promises.push(queryData(query).then(function () {
+                        callbackFunction(chunk.length, 1);
                     }));
                 }
                 Promise.all(promises).then(function () {

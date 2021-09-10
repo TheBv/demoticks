@@ -1,37 +1,45 @@
 import {Sequelize, Model, DataTypes } from "sequelize"
-import * as config from './../config'
+import {config} from './../config'
 
 //TODO: Accuracy for plays_in, implement classes table, add advantageLost,chargeUsed,weapon to events
 //TODO: Players from now on don't have a name by default, should get a different name for each website?
-
+//TODO: Should players/logs have timestamps?
+//TODO: Update default pooling settings?
 const sequelize = new Sequelize(config.MySQLdatabase,config.MySQLUser,config.MySQLPassword,{
     dialect: 'mysql',
     host: config.MySQLHost,
     port: config.MySQLPort,
+    logging: true,
 })
-
 export interface IMysqlEvent {
+    eventid: string | null,
     logid: number,
-    attacker: string,
-    victim : string,
-    killstreak: number,
+    attacker: string | null,
+    victim : string | null,
+    killstreak: number | null,
     headshot: boolean,
     airshot: boolean,
     medicDrop: boolean,
-    tick: number,
-    capture: number,
+    tick: number | null,
+    capture: number | null,
     kill: boolean,
     backstab: boolean,
-    medicDeath: boolean
+    medicDeath: boolean,
+    advantageLost: number | null,
+    chargeUsed: boolean,
+    weapon: string | null
 }
 export interface IMysqlPlayer{
     steam64: string,
-    name: string,
+    etf2lName: string | null,
+    ugcName: string | null,
+    ozFortressName: string | null,
+    logstfName: string | null,
     steamId3: string
 }
 export interface IMysqlMap {
     logid: number,
-    mapName: String
+    mapName: String | null
 }
 export interface IMysqlLog {
     logid: number,
@@ -39,13 +47,15 @@ export interface IMysqlLog {
     redPoints: number,
     bluePoints: number,
     timeTaken: number,
-    playeramount: number
+    playeramount: number,
+    official: boolean
 }
 export interface IMysqlDuplicateLog {
     logid: number,
     duplicateof: number
 }
 export interface IMysqlPlaysIn {
+    id: string | null,
     steam64: string,
     logid: number,
     blue: boolean,
@@ -59,7 +69,7 @@ export interface IMysqlPlaysIn {
     ubers: number,
     drops: number,
     kritz: number,
-    class: string
+    class: string | null
 }
 //TODO: Create a proper playsin interface/db stuff
 export interface IMysqlPlaysInClasses {
@@ -71,82 +81,96 @@ export interface IMysqlPlaysInClasses {
     damageTaken: number,
     healsReceived: number,
     healsDistributed: number,
-    ubers: number,
-    drops: number,
-    kritz: number,
     class: string
 }
 export class Event extends Model<IMysqlEvent> implements IMysqlEvent{
+    eventid!: string | null
     logid!: number
-    attacker: string
-    victim : string
-    killstreak: number
-    headshot: boolean
-    airshot: boolean
-    medicDrop: boolean
-    tick: number
-    capture: number
-    kill: boolean
-    backstab: boolean
-    medicDeath: boolean
+    attacker!: string | null
+    victim! : string | null
+    killstreak!: number | null
+    headshot!: boolean
+    airshot!: boolean
+    medicDrop!: boolean
+    tick!: number | null
+    capture!: number | null
+    kill!: boolean
+    backstab!: boolean
+    medicDeath!: boolean
+    advantageLost!: number | null
+    chargeUsed! : boolean
+    weapon! : string | null
 }
 
 export class Player extends Model<IMysqlPlayer> implements IMysqlPlayer{
-    steam64: string
-    name: string
-    steamId3: string
+    steam64!: string
+    etf2lName!: string | null
+    ugcName!: string | null
+    ozFortressName!: string | null
+    logstfName!: string | null
+    steamId3!: string
 }
 
 export class Map extends Model<IMysqlMap> implements IMysqlMap{
     logid!: number
-    mapName: String
+    mapName!: String | null
 }
 
 export class Log extends Model<IMysqlLog> implements IMysqlLog{
     logid!: number
-    date: number
-    redPoints: number
-    bluePoints: number
-    timeTaken: number
-    playeramount: number
+    date!: number
+    redPoints!: number
+    bluePoints!: number
+    timeTaken!: number
+    playeramount!: number
+    official!: boolean
 }
 
 export class DuplicateLog extends Model<IMysqlDuplicateLog> implements IMysqlDuplicateLog{
     logid!: number
-    duplicateof: number
+    duplicateof!: number
 }
 export class PlaysIn extends Model<IMysqlPlaysIn> implements IMysqlPlaysIn {
+    id!: string | null
     steam64!: string
     logid!: number
-    blue: boolean
-    kills: number
-    assists: number
-    deaths: number
-    damage: number
-    damageTaken: number
-    healsReceived: number
-    healsDistributed: number
-    ubers: number
-    drops: number
-    kritz: number
-    class: string
+    blue!: boolean
+    kills!: number
+    assists!: number
+    deaths!: number
+    damage!: number
+    damageTaken!: number
+    healsReceived!: number
+    healsDistributed!: number
+    ubers!: number
+    drops!: number
+    kritz!: number
+    class!: string | null
 }
-export class PlaysInClasses extends Model<IMysqlPlaysInClasses> implements IMysqlPlaysInClasses {
-    plays_inId: number
-    kills: number
-    assists: number
-    deaths: number
-    damage: number
-    damageTaken: number
-    healsReceived: number
-    healsDistributed: number
-    ubers: number
-    drops: number
-    kritz: number
-    class: string
+export class PlaysClasses extends Model<IMysqlPlaysInClasses> implements IMysqlPlaysInClasses {
+    plays_inId!: number
+    kills!: number
+    assists!: number
+    deaths!: number
+    damage!: number
+    damageTaken!: number
+    healsReceived!: number
+    healsDistributed!: number
+    class!: string
 }
 //TODO: Think about proper default values
+
+export const defaultMysqlPlayer = (): IMysqlPlayer => ({
+    etf2lName: null,
+    ugcName: null,
+    ozFortressName: null,
+    logstfName: null,
+    steam64: "",
+    steamId3: ""
+})
+
 export const defaultMysqlEvent = (): IMysqlEvent => ({
+    eventid: null,
     logid: -1,
     attacker: null,
     victim : null,
@@ -158,9 +182,13 @@ export const defaultMysqlEvent = (): IMysqlEvent => ({
     capture: null,
     kill: false,
     backstab: false,
-    medicDeath: false
+    medicDeath: false,
+    advantageLost: null,
+    chargeUsed: false,
+    weapon: null
 })
 export const defaultMysqlPlaysIn = (): IMysqlPlaysIn => ({
+    id: null,
     steam64!: "-1",
     logid!: -1,
     blue: false,
@@ -183,12 +211,13 @@ export const defaultMysqlLog = (): IMysqlLog => ({
     bluePoints: -1,
     timeTaken: -1,
     playeramount: -1,
+    official: false
 })
 
 
 Map.init({
     logid: {
-        type: DataTypes.BIGINT,
+        type: DataTypes.INTEGER,
         primaryKey : true,
         allowNull: false
     },
@@ -197,13 +226,20 @@ Map.init({
     }
 
 },{
+    timestamps: false,
     sequelize,
     tableName: "map"
 });
 Event.init({
-    logid: {
+    eventid: {
         type: DataTypes.BIGINT,
-        allowNull: false
+        allowNull: false,
+        primaryKey: true,
+        autoIncrement: true,
+    },
+    logid: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
     },
     attacker: {
         type: DataTypes.CHAR,
@@ -247,35 +283,60 @@ Event.init({
         type: DataTypes.BOOLEAN,
         allowNull: false
     },
+    advantageLost: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    chargeUsed: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false
+    },
+    weapon: {
+        type: DataTypes.CHAR,
+        allowNull: true
+    }
 },{
+    timestamps: false,
     sequelize,
     tableName: "events"
 })
 Player.init({
     steam64: {
         type: DataTypes.BIGINT,
-        allowNull: false
-    },
-    name: {
-        type: DataTypes.CHAR
+        allowNull: false,
+        primaryKey: true
     },
     steamId3: {
         type: DataTypes.CHAR
+    },
+    etf2lName: {
+        type: DataTypes.CHAR,
+    },
+    ugcName: {
+        type: DataTypes.CHAR,
+    },
+    ozFortressName: {
+        type: DataTypes.CHAR,
+    },
+    logstfName: {
+        type: DataTypes.CHAR,
     }
 },{
+    timestamps: true,
+    createdAt: false,
     sequelize,
     tableName: "players"
 })
 Log.init({
     logid: {
-        type: DataTypes.BIGINT,
-        allowNull: false
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        primaryKey: true
     },
     date: {
-        type: DataTypes.DATE
+        type: DataTypes.INTEGER
     },
-    redPoints: 
-    {
+    redPoints: {
         type: DataTypes.INTEGER
     },
     bluePoints: {
@@ -286,31 +347,43 @@ Log.init({
     },
     playeramount: {
         type: DataTypes.INTEGER
+    },
+    official: {
+        type: DataTypes.BOOLEAN
     }
 },{
+    timestamps: false,
     sequelize,
     tableName: "logs"
 })
 DuplicateLog.init({
-    logid!: {
-        type: DataTypes.BIGINT,
-        allowNull: false
+    logid: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        primaryKey: true
     },
     duplicateof: {
-        type: DataTypes.BIGINT,
+        type: DataTypes.INTEGER,
         allowNull: false
     }
 },{
+    timestamps: false,
     sequelize,
     tableName: "duplicatelogids"
 })
 PlaysIn.init({
+    id: {
+        type: DataTypes.BIGINT,
+        allowNull: false,
+        primaryKey: true,
+        autoIncrement: true
+    },
     steam64: {
         type: DataTypes.CHAR,
         allowNull: false
     },
     logid: {
-        type: DataTypes.BIGINT,
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     blue: {
@@ -362,7 +435,54 @@ PlaysIn.init({
         allowNull: false
     },
 },{
+    timestamps: false,
     sequelize,
     tableName: 'plays_in'
 })
+PlaysClasses.init({
+    plays_inId: {
+        type: DataTypes.BIGINT,
+        allowNull: false
+    },
+    class: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    kills: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    assists: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    deaths: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    damage: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    damageTaken: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    healsReceived: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    healsDistributed: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    }
+},{
+    timestamps: false,
+    sequelize,
+    tableName: 'plays_classes'
+})
 
+export const logEvents =  Log.hasMany(Event,{foreignKey: 'logid',as:'events'});
+
+Event.hasOne(Map);
+Event.hasMany(PlaysIn);

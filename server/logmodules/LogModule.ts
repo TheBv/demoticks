@@ -38,6 +38,8 @@ export class LogModule implements events.IStats{
     private firstCap : string
     private mysqlLog : IMysqlLog
     private gameStartTime: number
+    private paused : boolean
+
     constructor(gameState: IGameState) {
         this.identifier = 'game'
         this.gameState = gameState
@@ -51,6 +53,8 @@ export class LogModule implements events.IStats{
         this.totalLengthInSeconds = 0
         this.rounds = []
         this.gameStartTime = 0
+        this.mysqlLog = defaultMysqlLog()
+        this.paused = false
     }
 
     private defaultTeamStats = (score: number): ITeamRoundStats => ({
@@ -60,6 +64,21 @@ export class LogModule implements events.IStats{
         ubers: 0
     })
 
+    private defaultPlayer = (): IPlayerStats => ({
+        team: null,
+        kills: 0,
+        dmg: 0,
+    })
+
+    private getOrCreatePlayer(player: PlayerInfo): IPlayerStats {
+        if (!(player.id in this.currentRoundPlayers)) {
+            this.currentRoundPlayers[player.id] = this.defaultPlayer()
+        }
+        let playerInstance = this.currentRoundPlayers[player.id]
+        if (!playerInstance) throw new Error()
+        playerInstance.team = player.team
+        return playerInstance
+    }
 
     private newRound(timestamp: number) {
         if (this.rounds.length == 0){
@@ -102,6 +121,29 @@ export class LogModule implements events.IStats{
         return this.rounds[this.rounds.length - 1]
     }
 
+    onKill(event: events.IKillEvent) {
+        if (!this.gameState.isLive) return
+        const attacker: IPlayerStats = this.getOrCreatePlayer(event.attacker)
+        attacker.kills +=1
+        if (attacker.team == events.Team.Blue){
+            this.currentRoundTeams.Blue.kills +=1
+        }
+        if (attacker.team == events.Team.Red){
+            this.currentRoundTeams.Red.kills +=1
+        }
+    }
+    onDamage(event: events.IDamageEvent){
+        if (!this.gameState.isLive) return
+        const attacker: IPlayerStats = this.getOrCreatePlayer(event.attacker)
+        attacker.dmg += event.damage
+        if (attacker.team == events.Team.Blue){
+            this.currentRoundTeams.Blue.dmg += event.damage
+        }
+        if (attacker.team == events.Team.Red){
+            this.currentRoundTeams.Red.dmg += event.damage
+        }
+    }
+
     onScore(event: events.IRoundScoreEvent) {
         const lastRound = this.getLastRound()
         if (!lastRound) return
@@ -116,8 +158,27 @@ export class LogModule implements events.IStats{
         this.newRound(event.timestamp)
     }
 
+    onMiniRoundStart(event: events.IRoundStartEvent) {
+        this.newRound(event.timestamp)
+    }
+
     onRoundEnd(event: events.IRoundEndEvent) {
         this.endRound(event.timestamp, event.winner)
+        // Workaround for the case that the "Game_Over" event triggers before the "Round_Win" event
+        if (!this.gameState.isLive){
+            const roundLength = event.timestamp - this.currentRoundStartTime - this.currentRoundPausedTime
+            const lastRound = this.getLastRound()
+            // Check to make sure the round_win event happened at the same time as
+            // the previous event that ended the round
+            if (lastRound.winner) return
+            if (lastRound.lengthInSeconds !== roundLength) return
+            lastRound.events.push({
+                type: "round_win",
+                time: roundLength,
+                team: event.winner
+            })
+            lastRound.winner = event.winner
+        }
     }
 
     onGameOver(event: events.IGameOverEvent) {
@@ -126,15 +187,25 @@ export class LogModule implements events.IStats{
 
     onPause(event: events.IPauseEvent) {
         this.gameState.isLive = false
+        this.paused = true
         this.currentRoundPausedStart = event.timestamp
     }
 
     onUnpause(event: events.IUnpauseEvent) {
         this.gameState.isLive = true
+        this.paused = false
         if (this.currentRoundPausedStart > 0 && event.timestamp > this.currentRoundPausedStart) {
             this.currentRoundPausedTime += event.timestamp - this.currentRoundPausedStart
             this.currentRoundPausedStart = 0
         }
+    }
+        // Added to fix pause/unpause desync issues 
+    onTriggered(event: events.ITriggeredEvent) {
+        if (this.gameState.isLive) return
+        if (!this.paused) return
+        this.onUnpause({
+            timestamp : event.timestamp
+        })
     }
 
     onMapLoad(event: events.IMapLoadEvent) {

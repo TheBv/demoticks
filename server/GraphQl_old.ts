@@ -1,6 +1,10 @@
 const graphql = require('graphql');
 //import express from 'express';
-import mysql from 'mysql';
+//TODO: Use graphql-sequilize
+//TODO: Switch to sequilize-dataloader
+
+
+import mysql from 'mysql2';
 const database = require('./database');
 const knex = require("knex")({
     client: "mysql"
@@ -71,7 +75,7 @@ const schema = graphql.buildSchema(`
         AddLog(input: LogId): [Boolean]
     }
 `);
-
+//TODO: andEvents doesn't need to be array
 interface IEvent {
 
 }
@@ -125,7 +129,7 @@ const root = {
     SearchEvents: (data) => {
         return new Promise(async function (resolve, reject) {
             try {
-                data.input.logid = data.input.logid.slice(0, config.reqeustLimit); //Caps the amount of logs request to specified value
+                data.input.logid = data.input.logid.slice(0, config.requestLimit); //Caps the amount of logs request to specified value
                 let sqlknex = knex("events");
                 if (data.input.attacker !== undefined) {
                     sqlknex = sqlknex.whereIn("attacker", Object.values(data.input.attacker));

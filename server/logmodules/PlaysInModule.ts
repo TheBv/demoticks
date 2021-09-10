@@ -1,7 +1,7 @@
 import { events, IGameState, PlayerInfo } from "logstf-parser"
 import { defaultMysqlPlaysIn, IMysqlPlaysIn } from "../DatabaseModel"
-
-interface IMedicStats{
+import SteamID = require('steamid');
+interface IMedicStats {
     advantagesLost: number,
     biggestAdvantageLost: number,
     nearFullChargeDeaths: number,
@@ -12,7 +12,7 @@ interface IMedicStats{
     avgUberLength: number
 }
 
-interface IInternalStats{
+interface IInternalStats {
     timesBeforeHealing: number[],
     timesToBuild: number[],
     uberLengths: number[],
@@ -20,7 +20,7 @@ interface IInternalStats{
     lastUsedTime: number,
     lastSpawnTime: number,
     lastTimeDamageTaken: number,
-    lastChargeObtainedTime : number
+    lastChargeObtainedTime: number
 }
 
 interface IPlayerStats {
@@ -32,7 +32,7 @@ interface IPlayerStats {
     suicides: number
     damageTaken: number
     charges: number
-    chargesByType: {[index: string] : number}
+    chargesByType: { [index: string]: number }
     drops: number
     airshots: number
     sentriesBuilt: number
@@ -42,7 +42,7 @@ interface IPlayerStats {
     healing: number
     healingReceived: number
     medkits: number
-    medkitsHp : number
+    medkitsHp: number
     backstabs: number
     capturesPoint: number
     capturesIntel: number
@@ -57,9 +57,9 @@ interface IClassStats {
 
 export class PlaysInModule implements events.IStats {
     public identifier: string
-    private players: {[id:string]: IPlayerStats}
+    private players: { [id: string]: IPlayerStats }
     private classes: Map<string, Map<string, IClassStats>>
-    private internalStats: {[id:string]: IInternalStats}
+    private internalStats: { [id: string]: IInternalStats }
     private gameState: IGameState
     private currentRoles: Map<string, string>
     private currentSpawntimes: Map<string, number>
@@ -97,7 +97,7 @@ export class PlaysInModule implements events.IStats {
         healing: 0,
         healingReceived: 0,
         medkits: 0,
-        medkitsHp : 0,
+        medkitsHp: 0,
         backstabs: 0,
         capturesPoint: 0,
         capturesIntel: 0,
@@ -105,15 +105,15 @@ export class PlaysInModule implements events.IStats {
         currentKillStreak: 0,
         medicstats: null,
     })
-        
-    private defaultInternalStats = ():IInternalStats => ({
+
+    private defaultInternalStats = (): IInternalStats => ({
         timesBeforeHealing: [],
         timesToBuild: [],
         uberLengths: [],
         timesBeforeUsing: [],
         lastUsedTime: 0,
         lastSpawnTime: 0,
-        lastChargeObtainedTime : 0,
+        lastChargeObtainedTime: 0,
         lastTimeDamageTaken: 0
     })
 
@@ -141,19 +141,21 @@ export class PlaysInModule implements events.IStats {
         const returnInstance = playerInstance.get(role)!
         return returnInstance
     }
-    private getMostPlayedClass(player: string): string{
-        let mostPlayed : string = null
-        let mostPlaytime : number = 0
-        this.classes.get(player).forEach((value,key) =>{
-            if (value.playtimeInSeconds >= mostPlaytime){
+    private getMostPlayedClass(player: string): string {
+        let mostPlayed: string = "NA"
+        let mostPlaytime: number = 0
+        this.classes.get(player)?.forEach((value, key) => {
+            if (value.playtimeInSeconds >= mostPlaytime) {
                 mostPlayed = key;
             }
         })
         return mostPlayed
+
+
     }
-    private getMean(input: number[]): number{
+    private getMean(input: number[]): number {
         if (input.length != 0)
-            return input.reduce((a,b) => a+b) /input.length
+            return input.reduce((a, b) => a + b) / input.length
         return 0
     }
 
@@ -196,7 +198,7 @@ export class PlaysInModule implements events.IStats {
 
         if (event.headshot) attacker.headshots++
         if (event.backstab) attacker.backstabs++
-        
+
         victim.deaths++
         victim.longestKillStreak = Math.max(victim.currentKillStreak, victim.longestKillStreak)
         victim.currentKillStreak = 0
@@ -218,33 +220,33 @@ export class PlaysInModule implements events.IStats {
             stats.lastTimeDamageTaken = event.timestamp
         }
     }
-    
-    onCapture(event: events.ICaptureEvent){
+
+    onCapture(event: events.ICaptureEvent) {
         if (!this.gameState.isLive) return
-        for (const playerInfo of event.players){
+        for (const playerInfo of event.players) {
             const player: IPlayerStats = this.getOrCreatePlayer(playerInfo)
             player.capturesPoint += 1
         }
     }
 
-    onFlag(event: events.IFlagEvent){
+    onFlag(event: events.IFlagEvent) {
         if (!this.gameState.isLive) return
         const player: IPlayerStats = this.getOrCreatePlayer(event.player)
-        if (event.type == events.FlagEvent.Captured){
+        if (event.type == events.FlagEvent.Captured) {
             player.capturesIntel += 1
         }
     }
 
-    onPickup(event: events.IPickupEvent){
+    onPickup(event: events.IPickupEvent) {
         if (!this.gameState.isLive) return
         const player: IPlayerStats = this.getOrCreatePlayer(event.player)
-        if (event.healing){
+        if (event.healing) {
             player.medkitsHp += event.healing
-            switch (event.item){
-                case("medkit_medium"):
+            switch (event.item) {
+                case ("medkit_medium"):
                     player.medkits += 2
                     break;
-                case("medkit_large"):
+                case ("medkit_large"):
                     player.medkits += 4
                     break;
                 default:
@@ -264,22 +266,22 @@ export class PlaysInModule implements events.IStats {
 
     }
 
-    onFirstHeal(event: events.IFirstHealEvent){
+    onFirstHeal(event: events.IFirstHealEvent) {
         if (!this.gameState.isLive) return
         const statsHealer: IInternalStats = this.getOrCreateStats(event.player)
         statsHealer.timesBeforeHealing.push(event.time)
     }
 
-    onBuild(event: events.IBuildEvent){
+    onBuild(event: events.IBuildEvent) {
         if (!this.gameState.isLive) return
-        if (event.builtObject == events.Building.Sentry){
+        if (event.builtObject == events.Building.Sentry) {
             const player: IPlayerStats = this.getOrCreatePlayer(event.player)
             player.sentriesBuilt += 1
-        }  
+        }
     }
-    onObjectDestroyed(event: events.IObjectDestroyedEvent){
+    onObjectDestroyed(event: events.IObjectDestroyedEvent) {
         if (!this.gameState.isLive) return
-        if (event.builtObject ==events.Building.Sentry){
+        if (event.builtObject == events.Building.Sentry) {
             const player: IPlayerStats = this.getOrCreatePlayer(event.attacker)
             player.sentriesDestroyed += 1
         }
@@ -297,7 +299,7 @@ export class PlaysInModule implements events.IStats {
         player.suicides += 1
     }
 
-    onSpawn(event: events.ISpawnEvent){
+    onSpawn(event: events.ISpawnEvent) {
         if (!this.gameState.isLive) return
 
         this.trackingStop(event.player.id, event.timestamp)
@@ -344,54 +346,54 @@ export class PlaysInModule implements events.IStats {
         player.chargesByType[event.medigunType] += 1
         stats.timesBeforeUsing.push(event.timestamp - stats.lastChargeObtainedTime)
     }
-    onChargeReady(event: events.IChargeReadyEvent){
+    onChargeReady(event: events.IChargeReadyEvent) {
         if (!this.gameState.isLive) return
         const stats: IInternalStats = this.getOrCreateStats(event.player)
         stats.lastChargeObtainedTime = event.timestamp
-        stats.timesToBuild.push(event.timestamp - Math.max(stats.lastUsedTime,stats.lastSpawnTime))
+        stats.timesToBuild.push(event.timestamp - Math.max(stats.lastUsedTime, stats.lastSpawnTime))
     }
-    onLostUberAdv(event: events.ILostUberAdvantageEvent){
+    onLostUberAdv(event: events.ILostUberAdvantageEvent) {
         if (!this.gameState.isLive) return
         const player: IPlayerStats = this.getOrCreatePlayer(event.player)
-        if (!player.medicstats){
+        if (!player.medicstats) {
             player.medicstats = this.defaultMedicStats()
         }
         player.medicstats.advantagesLost += 1
         player.medicstats.biggestAdvantageLost = Math.max(player.medicstats.biggestAdvantageLost, event.time)
     }
 
-    onMedicDeath(event: events.IMedicDeathEvent){
+    onMedicDeath(event: events.IMedicDeathEvent) {
         if (!this.gameState.isLive) return
         const attacker: IPlayerStats = this.getOrCreatePlayer(event.attacker)
         const victim: IPlayerStats = this.getOrCreatePlayer(event.victim)
         const stats: IInternalStats = this.getOrCreateStats(event.victim)
-        if(event.isDrop)
+        if (event.isDrop)
             victim.drops += 1;
-        if(event.timestamp - stats.lastUsedTime <= 20){
-            if (!victim.medicstats){
+        if (event.timestamp - stats.lastUsedTime <= 20) {
+            if (!victim.medicstats) {
                 victim.medicstats = this.defaultMedicStats()
             }
             victim.medicstats.deathsAfterUber += 1;
         }
-        
+
     }
 
-    onMedicDeathEx(event: events.IMedicDeathExEvent){
+    onMedicDeathEx(event: events.IMedicDeathExEvent) {
         if (!this.gameState.isLive) return
         const player: IPlayerStats = this.getOrCreatePlayer(event.player)
-        if (!player.medicstats){
+        if (!player.medicstats) {
             player.medicstats = this.defaultMedicStats()
         }
-        if(event.uberpct >= 95 && event.uberpct < 100){
+        if (event.uberpct >= 95 && event.uberpct < 100) {
             player.medicstats.nearFullChargeDeaths += 1
         }
     }
 
-    onChargeEnded(event: events.IChargeEndedEvent){
+    onChargeEnded(event: events.IChargeEndedEvent) {
         if (!this.gameState.isLive) return
         const player: IPlayerStats = this.getOrCreatePlayer(event.player)
         const stats: IInternalStats = this.getOrCreateStats(event.player);
-        if (!player.medicstats){
+        if (!player.medicstats) {
             player.medicstats = this.defaultMedicStats()
         }
         stats.lastUsedTime = event.timestamp;
@@ -400,10 +402,11 @@ export class PlaysInModule implements events.IStats {
 
     finish(): void {
         const self = this;
-        for (const key of Object.keys(this.internalStats)){
+        for (const key of Object.keys(this.players)) {
             const player = self.players[key];
             const stats = self.internalStats[key]
-            if (player.medicstats && stats){
+            if (!stats || !player) return
+            if (player.medicstats && stats) {
                 player.medicstats.avgUberLength = self.getMean(stats.uberLengths)
                 player.medicstats.avgTimeToBuild = self.getMean(stats.timesToBuild)
                 player.medicstats.avgTimeToUse = self.getMean(stats.timesBeforeUsing)
@@ -413,36 +416,45 @@ export class PlaysInModule implements events.IStats {
     }
 
     toJSON(): IMysqlPlaysIn[] {
-        const mysqlPlaysIn : IMysqlPlaysIn[] = []
-        for(const key in this.players){
+        const mysqlPlaysIn: IMysqlPlaysIn[] = []
+        for (const key in this.players) {
             const player = this.players[key];
             const mysqlPlayer = defaultMysqlPlaysIn()
-            mysqlPlayer.kills = player.kills
-            mysqlPlayer.assists = player.assists
-            mysqlPlayer.deaths = player.deaths
-            if (player.team == "blue"){
-                mysqlPlayer.blue = true
-            }   
-            mysqlPlayer.damage = player.damage
-            mysqlPlayer.damageTaken = player.damageTaken
-            mysqlPlayer.drops = player.drops
-            mysqlPlayer.class = "scout"
-            for (const chargeName in player.chargesByType){
-                const charge = player.chargesByType[chargeName]
-                if (chargeName == "kritzkrieg"){
-                    mysqlPlayer.kritz = charge
+            try {
+                const steamId = new SteamID(key)
+                if (!steamId.isValid()) continue;
+                mysqlPlayer.steam64 = steamId.getSteamID64();
+                mysqlPlayer.kills = player.kills
+                mysqlPlayer.assists = player.assists
+                mysqlPlayer.deaths = player.deaths
+                if (player.team == "blue") {
+                    mysqlPlayer.blue = true
                 }
-                else if (chargeName == "medigun"){
-                    mysqlPlayer.ubers += charge
+                mysqlPlayer.damage = player.damage
+                mysqlPlayer.damageTaken = player.damageTaken
+                mysqlPlayer.drops = player.drops
+                mysqlPlayer.class = "scout"
+                for (const chargeName in player.chargesByType) {
+                    const charge = player.chargesByType[chargeName]
+                    if (chargeName == "kritzkrieg") {
+                        mysqlPlayer.kritz = charge
+                    }
+                    else if (chargeName == "medigun") {
+                        mysqlPlayer.ubers += charge
+                    }
+                    else {
+                        console.info("Found unknow charge named: " + chargeName)
+                        mysqlPlayer.ubers += charge
+                    }
                 }
-                else{
-                    console.info("Found unknow charge named: " + chargeName)
-                    mysqlPlayer.ubers += charge
-                }
+                mysqlPlayer.healsDistributed = player.healing
+                mysqlPlayer.healsReceived = player.healingReceived
+                mysqlPlayer.class = this.getMostPlayedClass(key)
+                mysqlPlaysIn.push(mysqlPlayer);
             }
-            mysqlPlayer.healsDistributed = player.healing
-            mysqlPlayer.healsReceived = player.healingReceived
-            mysqlPlayer.class = this.getMostPlayedClass(key)
+            catch (err) {
+                continue;
+            }
         }
         return mysqlPlaysIn
     }

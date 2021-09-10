@@ -1,25 +1,109 @@
 import {LogParser} from 'logstf-parser'
-import PlayerClassStatsModule from "logstf-parser/lib/cjs/modules/PlayerClassStatsModule";
-import { PlaysIn } from "./DatabaseModel";
+import { defaultMysqlLog, DuplicateLog, Event, IMysqlDuplicateLog, IMysqlEvent, IMysqlLog, IMysqlPlayer, IMysqlPlaysIn, Log, Player, PlaysIn } from "./DatabaseModel";
 import { EventsModule } from "./logmodules/EventModule";
 import { LogModule } from "./logmodules/LogModule";
 import { PlaysInModule } from "./logmodules/PlaysInModule";
-import {IMysqlLog} from './DatabaseModel'
+import { PlayerModule } from "./logmodules/PlayerModule";
+import { PlayerClassModule } from "./logmodules/PlayerClassModule";
+import { fetchNames} from './FetchNames';
+import {Op, UniqueConstraintError} from 'sequelize';
+import { LoneSchemaDefinition } from "graphql/validation/rules/LoneSchemaDefinition";
 //Accepts a logfile
 //Parses it with the modules added
 //
+
+interface LogData {
+    logData: IMysqlLog[],
+    players: IMysqlPlayer[],
+    playsIn: IMysqlPlaysIn[],
+    events: IMysqlEvent[]
+}
+
 const parser = new LogParser()
-parser.addModule(EventsModule)
+parser.useCustomGameState();
 parser.addModule(LogModule)
-parser.addModule(PlayerClassStatsModule)
+parser.addModule(PlayerModule)
+parser.addModule(EventsModule)
+parser.addModule(PlayerClassModule)
 parser.addModule(PlaysInModule)
-export async function parseAndPopulateDatabase(lines: string[]): Promise<boolean>{
+export async function parseAndPopulateDatabase(lines: string[], logid: number): Promise<boolean>{
     const game = parser.parseLines(lines);
-    const logModule = game.modules.find(a => {a instanceof LogModule})
+    const logModule = game.modules.find(a => {return a instanceof LogModule})
+    const playerModule = game.modules.find(a => {return a instanceof PlayerModule})
+    const eventsModule = game.modules.find(a => {return a instanceof EventsModule})
+    const playerClassModule = game.modules.find(a => {return a instanceof PlayerClassModule})
+    const playsInModule = game.modules.find(a => {return a instanceof PlaysInModule})
     if (logModule instanceof LogModule){
-        logModule.toJSON()
+        const logData = logModule.toJSON()
+        logData.logid = logid;
+        try{
+            await Log.create(logData)
+        }
+        catch (err: any){
+            if (err instanceof UniqueConstraintError){
+                const subError = err.errors[0];
+                if (subError.validatorKey == 'not_unique' && subError.path == 'logs.dublicateLogs'){
+                    Log.findOne({
+                        where: {
+                            date: logData.date,
+                            redPoints: logData.redPoints,
+                            bluePoints: logData.bluePoints,
+                            timeTaken: logData.timeTaken,
+                            playeramount: logData.playeramount
+                        }
+                    }).then((duplicateOf: Log|null) => {
+                        if (!duplicateOf) return;
+                        const duplicateLog : IMysqlDuplicateLog = {
+                            logid: logid,
+                            duplicateof: duplicateOf.logid
+                        }
+                        DuplicateLog.create(duplicateLog).catch(err => 
+                            {console.log(err)});
+                    }).catch(err => console.error(err));
+                    return false;
+                }
+            }
+            console.error(err);
+            return false;
+        }
     }
-    
-    await PlaysIn.bulkCreate(game.modules[0]);
+    if (playerModule instanceof PlayerModule){
+        let players = playerModule.toJSON();
+        const loggedPlayers = (await Player.findAll({
+            where:{
+                steam64: {[Op.in] : players.map((player)=>{return player.steam64})} 
+            }
+        })).map((player) => player.steam64.toString());
+        players = players.filter(player => !loggedPlayers.includes(player.steam64));
+        try{
+            await Player.bulkCreate(players)
+        }
+        catch (err){
+            console.error(err);
+            return false;
+        }
+        //TODO: Create a task scheduler type thing for this
+        /*Player.bulkCreate(await fetchNames(players), {
+            updateOnDuplicate: ["etf2lName","logstfName","ozFortressName","ugcName"]
+        }).catch((err)=> console.error(err))*/
+    }
+    if (playsInModule instanceof PlaysInModule){
+        const playsInData = playsInModule.toJSON();
+        playsInData.forEach(playsIn =>{playsIn.logid = logid})
+        await PlaysIn.bulkCreate(playsInData).catch((err)=> console.error(err))
+    }
+    if (eventsModule instanceof EventsModule){
+        const eventsData = eventsModule.toJSON();
+        eventsData.forEach(event =>{event.logid = logid})
+        await Event.bulkCreate(eventsData).catch((err)=> console.error(err))
+    }
+    if (playerClassModule instanceof PlayerClassModule){
+        //TODO:
+        //await Player.bulkCreate(playerClassModule.toJSON())
+    }
     return true
+}
+
+async function populateDatabase(logData: LogData){
+
 }
