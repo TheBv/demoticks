@@ -121,21 +121,22 @@ async function getFileEvents() {
             reqeustIds.push(fileData.logtfData[fileData.selectIndex].id);
         }
         searchQuery.setLogIds(reqeustIds);
-        
-        searchQuery.setAttackers([players[0].steamId3]);
+
+        searchQuery.setAttackers([players[0].steam64]);
         updateEvents();
         await addEvents(searchQuery.logIds, 20);
-        
+
         result = await queryData(searchQuery.toQuery());
+        console.log(result);
         if (result !== undefined) {
-            result = result.SearchEvents;
+            result = result.event;
             const eventArray = searchQuery.events;
             const tableBody = $("#outputTable")[0];
             const eventTable = new TableCreator("table outputtable", "outputTable");
 
-            const eventSorting = ["tick", ""].concat(searchQuery.events.map(event => { return event.getAlias(); }));
+            const eventSorting = ["second", ""].concat(searchQuery.events.map(event => { return event.getAlias(); }));
             eventSorting.push("button");
-            eventTable.addHeader(["Date", "Map"].concat(searchQuery.events.map(event => { return event.getAlias(); })).concat([""]));
+            eventTable.addHeader(["Date", "Logid"].concat(searchQuery.events.map(event => { return event.getAlias(); })).concat([""]));
             eventTable.setFixedRowLength(eventArray.length + 3);
             for (entryIndex in result) {
                 const entry = result[entryIndex];
@@ -169,7 +170,7 @@ async function getFileEvents() {
 }
 function createEventObject(events) {
     const values = {};
-    values.tick = events.tick;
+    values.second = events.second * 66;
     for (thing of searchQuery.events) {
         values[thing.getAlias()] = thing.matches(events);
     }
@@ -187,14 +188,14 @@ function createVDM() {
     $.each(vdmMainData, function (entryIndex, entry) {
         const VDM = new EventVDM();
         VDM.setfileName(idToDemoName.get(entry.logid));
-        
+
         if (entryIndex !== vdmMainData.length - 1) { //Sets the map it jumps to at the end
             VDM.setLink(idToDemoName.get(vdmMainData[entryIndex + 1].logid));
         }
         entry.events = entry.events.flat();
-        for (event of entry.events) {
+        for (const event of entry.events) {
 
-            VDM.addEvent(event.tick);
+            VDM.addEvent(event.second * 66);
         }
         allVDM.push(VDM);
     });
@@ -202,7 +203,7 @@ function createVDM() {
     zip.file("startfile_is_" + allVDM[0].fileName.replace(".dem", ""), "The first demo to play is: " + allVDM[0].fileName);
     for (const VDM of allVDM) {
         zip.file(VDM.fileName.replace(".dem", ".vdm"), VDM.toString());
-        
+
     }
     zip.generateAsync({ type: "blob" })
         .then(function (content) {

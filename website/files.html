@@ -1,17 +1,20 @@
 ﻿<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+
 <head>
-    <meta charset="utf-8" name="description" content="Demoticks.tf is a utility that allows the user to find relevant events in their recent Team Fortress 2 (tf2) matches uploaded to logs.tf.
+    <meta charset="utf-8" name="description"
+        content="Demoticks.tf is a utility that allows the user to find relevant events in their recent Team Fortress 2 (tf2) matches uploaded to logs.tf.
                 It is mostly meant to simplify the workflow of finding points of interest in Team Fortress 2 demo files. The user can enter their name/steamid and upload .dem files and receive relevant events" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="mainstyle.css" />
     <title>Files</title>
 </head>
+
 <body>
     <div class="bar">
         <a name="test" href="/">
-            <img src="/images/demoticks_logo.png" id="logoImage" height="100" class="center" alt="Demoticks"/>
+            <img src="/images/demoticks_logo.png" id="logoImage" height="100" class="center" alt="Demoticks" />
         </a>
     </div>
     <div class="container about">
@@ -41,7 +44,9 @@
 
                                     </td>
                                     <td>
-                                        <input list="playernames" id="inputValues" type="text" name="userName" onblur="insertSteamId(this);insertPlayers()" oninput="updateDatalist(this)" />
+                                        <input list="playernames" id="inputValues" type="text" name="userName"
+                                            onblur="insertSteamId(this);insertPlayers()"
+                                            oninput="updateDatalist(this)" />
                                         <datalist id="playernames"></datalist>
                                     </td>
                                 </tr>
@@ -100,7 +105,10 @@
                         <div id="events">
                             <table class="table dropdown" id="eventTable">
                                 <tbody>
-                                    <tr><td style="text-align:left"><a class="button remove event" onclick="removeEvent(this)">x</a></td></tr>
+                                    <tr>
+                                        <td style="text-align:left"><a class="button remove event"
+                                                onclick="removeEvent(this)">x</a></td>
+                                    </tr>
                                     <tr>
                                         <td>
                                             <div class="form-select customform">
@@ -132,33 +140,45 @@
                             <div class="player_header">
                                 <div class="tooltip">
                                     <h4>Date Format</h4>
-                                    <span class="tooltiptext">If the dateformat of your files can't be read enter an example here and the website will try to use it.<br /> For example: if one of your files is called: 2020-11-01_21-34-11 the format would be: YYYY-MM-DD_HH-mm-ss<br> <br>Y: Year, M: Month, D: Day, H: Hour, m: Minute, s: Seconds</span>
+                                    <span class="tooltiptext">If the dateformat of your files can't be read enter an
+                                        example here and the website will try to use it.<br /> For example: if one of
+                                        your files is called: 2020-11-01_21-34-11 the format would be:
+                                        YYYY-MM-DD_HH-mm-ss<br> <br>Y: Year, M: Month, D: Day, H: Hour, m: Minute, s:
+                                        Seconds</span>
                                 </div>
                             </div>
                             <table>
-                                <tr><td><input type="text" value="YYYYMMDD_HHmm" id="dateFormat"/></td></tr>
+                                <tr>
+                                    <td><input type="text" value="YYYYMMDD_HHmm" id="dateFormat" /></td>
+                                </tr>
                             </table>
                         </td>
                         <td>
                             <div class="events_header">
                                 <div class="tooltip">
                                     <h4>Record Duration</h4>
-                                    <span class="tooltiptext">The duration of your recording in seconds; this will be multiplied for killstreaks.</span>
+                                    <span class="tooltiptext">The duration of your recording in seconds; this will be
+                                        multiplied for killstreaks.</span>
                                 </div>
                             </div>
                             <table>
-                                <tr><td><input  type="number" value="10" min="0" id ="recordDuration"/></td></tr>
+                                <tr>
+                                    <td><input type="number" value="10" min="0" id="recordDuration" /></td>
+                                </tr>
                             </table>
                         </td>
                         <td>
                             <div class="events_header">
                                 <div class="tooltip">
                                     <h4>Prerecord Duration</h4>
-                                    <span class="tooltiptext">The amount of time spent recording before the event happens in seconds.</span>
+                                    <span class="tooltiptext">The amount of time spent recording before the event
+                                        happens in seconds.</span>
                                 </div>
                             </div>
                             <table>
-                                <tr><td><input type="number" value="5" min="0" id ="prerecordDuration"/></td></tr>
+                                <tr>
+                                    <td><input type="number" value="5" min="0" id="prerecordDuration" /></td>
+                                </tr>
                             </table>
                         </td>
                     </tr>
@@ -168,16 +188,18 @@
                 <table>
                     <tr>
                         <td>
-                            <button class="button browse" type="button" id="import-pfx-button">Browse...</button>                        
+                            <button class="button browse" type="button" id="import-pfx-button">Browse...</button>
                             <input type="file" id="file-input" style="display:none" multiple="multiple" />
                             <output id="list"></output>
                         </td>
-                        <td><button class="button fetchEvents" id="fetchEvents" disabled type="button" onclick="getFileEvents()">GetEvents</button></td>
-                        <td><button class="button createVDM" id="createVdm" disabled type="button" onclick="createVDM()">CreateVDM</button></td>
+                        <td><button class="button fetchEvents" id="fetchEvents" disabled type="button"
+                                onclick="getFileEvents()">GetEvents</button></td>
+                        <td><button class="button createVDM" id="createVdm" disabled type="button"
+                                onclick="createVDM()">CreateVDM</button></td>
                     </tr>
                 </table>
             </div>
-            
+
             <div class="output">
                 <table class="table outputtable vdm" id="outputTable">
                     <thead>
@@ -214,11 +236,12 @@
     <script src="js/sharedGraphQL.js"></script>
     <script src="js/tableCreator.js"></script>
     <script src="js/utilities.js"></script>
-    <script src="js/moment.js"></script>
-    <script src="js/moment-parseformat.js"></script>
-    <script src="js/moment-timezone.js"></script>
-    <script src="js/jszip.min.js"></script>
-    <script src="js/FileSaver.min.js"></script>
+    <script src="js/dependencies/moment.js"></script>
+    <script src="js/dependencies/moment-parseformat.js"></script>
+    <script src="js/dependencies/moment-timezone.js"></script>
+    <script src="js/dependencies/jszip.min.js"></script>
+    <script src="js/dependencies/FileSaver.min.js"></script>
     <script src="js/vdm.js"></script>
 </body>
+
 </html>

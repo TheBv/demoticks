@@ -26,19 +26,25 @@ class SearchQuery {
     toQuery() {
         let query = `{event(logid: [${this.logIds}]`;
 
-        let queryInput = "";
+        const queryInput = [];
         let queryOutput = "";
-        if (!this.attackers.includes(null)) {
-            queryInput += `attacker: "${this.attackers.join(`", "`)}"`;
+        for (const attacker of this.attackers){
+            for (const victim of this.victims) {
+                for (const event of this.events) {
+                    let currEvent = "";
+                    if (attacker) {
+                        currEvent += `attacker: "${attacker}"`;
+                    }
+                    if (victim) {
+                        currEvent += `victim: "${victim}"`;
+                    }
+                    currEvent += event.toInput();
+                    queryOutput += event.toOutput();
+                    queryInput.push(`{${currEvent}}`);
+                }
+            }
         }
-        if (!this.victims.includes(null)) {
-            queryInput += `victim: ["${this.victims.join(`", "`)}"]`;
-        }
-        for (event of this.events) {
-            queryInput += event.toInput();
-            queryOutput += event.toOutput();
-        }
-        query += `events:{${queryInput}}) { logid date events{ attacker ${queryOutput} tick }}}`;
+        query += `events:[${queryInput}]) { logid date map events{ attacker ${queryOutput} second }}}`;
         console.log(query);
         return query;
     }
@@ -52,7 +58,7 @@ class Event {
         MD: "medicDrop : true",
         BS: "backstab : true",
         MK: "medicDeath : true",
-        K : "kill : true"
+        K: "kill : true"
     }));
     EventsO = new Map(Object.entries({
         KS: "killstreak",
@@ -63,7 +69,7 @@ class Event {
         MK: "medicDeath",
         K: "kill"
     }));
-    subEvents = []
+    subEvents = [];
 
     add(eventTag) {
         this.subEvents.push(eventTag);
@@ -72,9 +78,6 @@ class Event {
         let input = "";
         for (const eventTag of this.subEvents) {
             input += ` ${this.EventsI.get(eventTag)} `;
-        }
-        if (this.subEvents.length >= 2) {
-            return ` andEvents: {${input}} `;
         }
         return input;
     }
@@ -94,7 +97,7 @@ class Event {
             if (response[this.EventsO.get(eventTag)] !== true) {
                 matches = false;
             }
-            if (typeof response[this.EventsO.get(eventTag)] == 'number') {
+            if (typeof response[this.EventsO.get(eventTag)] == "number") {
                 matches = response[this.EventsO.get(eventTag)];
             }
         }
@@ -102,22 +105,21 @@ class Event {
     }
 }
 
-
-const getPlayers =function() { //Needs updating
+const getPlayers = function () { //Needs updating
     return new Promise(function (resolve, reject) {
-        let playerarray = [];
-        let table = $("#playerTable").children("tbody")[0];
+        const playerarray = [];
+        const table = $("#playerTable").children("tbody")[0];
         new Promise(function (resolve, reject) {
-            let promises = [];
+            const promises = [];
             $.each(table.rows, function (player) {
                 let checkagainst = "";
-                if (players[player] !== undefined){
+                if (players[player] !== undefined) {
                     checkagainst = players[player].steam64;
                 }
                 if (table.rows[player].cells[0].getElementsByTagName("input")[0].value !== checkagainst) {
-                    promises.push(queryData("{player(steam64: \"" + table.rows[player].cells[0].getElementsByTagName("input")[0].value + "\") {steam64 etf2lName steamId3}}").then(function (data) {
+                    promises.push(queryData("{player(steam64: \"" + table.rows[player].cells[0].getElementsByTagName("input")[0].value + "\") {steam64 name}}").then(function (data) {
                         playerarray.push(data.player[0]);
-                    }).catch((err) => { console.log("Invalid SearchInput",err); }));
+                    }).catch((err) => { console.log("Invalid SearchInput", err); }));
                 }
                 else if (players[player] !== undefined) {
                     playerarray.push(players[player]);
@@ -127,63 +129,53 @@ const getPlayers =function() { //Needs updating
                 resolve();
             });
         }).then(function () {
+            console.log(playerarray);
             players = playerarray;
             resolve(playerarray);
         });
     });
 };
-//Returns the playername from a given steamid3
-const getPlayerName = function(steamId3) { //Will be replaced with global player class
+//Returns the playername from a given steam64 id
+const getPlayerName = function (steam64) { //Will be replaced with global player class
     for (const player of players) {
-        if (player.steamId3 === steamId3){
+        if (player.steam64 === steam64) {
             return player.name;
         }
     }
     return null;
 };
 
-const getPlayerNameFromSteam64 = function(_this) {
+const getPlayerNameFromSteam64 = function (_this) {
     if (_this.value.length === 17) {
         const cubes = $('div[name="requestingPlayerName"]');
         const name = _this.parentNode.parentNode.getElementsByTagName("td")[2].getElementsByTagName("input")[0];
-        const querry = `{player(input: { steam64: "${_this.value}" }) {etf2lName}}`;
+        const querry = `{player(steam64: "${_this.value}") {name}}`;
         cubes.show();
         queryData(querry).then(function (data) {
             if (data["player"].length !== 0) {
-                name.value = data["player"][0]["etf2lName"];
+                name.value = data["player"][0]["name"];
                 cubes.hide();
             }
 
         }).catch(reason => { name.value = "Player not found"; cubes.hide(); });
     }
-}
+};
 
 function insertSteamId(_this) {
     const name = _this.value;
     const steamIdNeighbour = _this.parentNode.parentNode.getElementsByTagName("td")[0].getElementsByTagName("input")[0];
     if (returnedPlayers.length !== undefined) {
         for (const data of returnedPlayers) {
-            if (data["etf2lName"] === name){
+            if (data["name"] === name) {
                 steamIdNeighbour.value = data["steam64"];
             }
         }
     }
 }
-/*async function steam64ToSteam3(steam64Array) {
-    const steam3Array = [];
-    for (const steam64 of steam64Array) {
-        for (const player in players) {
-            if (players[player].steam64 === steam64) {
-                steam3Array.push(`"${players[player].steamId3.toString()}"`);
-            }
-        }
-    }
-    return steam3Array;
-}*/
 
-const updateDatalist = function(_this) { //Needs updating
+const updateDatalist = function (_this) { //Needs updating
     if (_this.value.length >= 2) {
-        let querry = `{player(etf2lName: "${_this.value}" ) {steam64 etf2lName}}`;
+        let querry = `{player(name: "${_this.value}" ) {steam64 name}}`;
         queryData(querry).then(function (data) {
             console.log(data);
             data = data["player"];
@@ -195,15 +187,15 @@ const updateDatalist = function(_this) { //Needs updating
                 let names = [];
                 for (let index in data) {
                     let option = document.createElement("option");
-                    let name = data[index]["etf2lName"];
+                    let name = data[index]["name"];
                     if (!names.includes(name)) {
-                        names.push(data[index]["etf2lName"]);
+                        names.push(data[index]["name"]);
                         option.value = name;
                     }
                     else {
-                        let newName = data[index]["etf2lName"] + "(" + names.filter(i => i === name).length + ")";
+                        let newName = data[index]["name"] + "(" + names.filter(i => i === name).length + ")";
                         names.push(newName);
-                        data[index]["etf2lName"] = newName;
+                        data[index]["name"] = newName;
                         option.value = newName;
                     }
                     list.appendChild(option);
@@ -211,30 +203,21 @@ const updateDatalist = function(_this) { //Needs updating
             }
         });
     }
-}
+};
 
-const addEvents = function(logs, chunkSize, callbackFunction = function () {}) { //Use async/await
-    return new Promise(function (resolve, reject) {
-        try {
-            const chunks = chunkArray(logs, chunkSize);
-            new Promise(function (resolve, reject) {
-                const promises = [];
-                for (const chunk of chunks) {
-                    const query = `{addLog(logid: [${chunk.toString()}] )}`;
-                    console.log(query);
-                    promises.push(queryData(query).then(function () {
-                        callbackFunction(chunk.length, 1);
-                    }));
-                }
-                Promise.all(promises).then(function () {
-                    resolve();
-                });
-            }).then(function () {
-                resolve();
+const addEvents = async function (logs, chunkSize, callbackFunction = () => { }) {
+    try {
+        const chunks = chunkArray(logs, chunkSize);
+        for (const chunk of chunks){
+            const query = `{addLog(logid: [${chunk.toString()}] )}`;
+            await queryData(query).then(function(){
+                callbackFunction(chunk.length, 1);
             });
         }
-        catch (err) {
-            reject(err);
-        }
-    });
-}
+        return true;
+    }
+    catch (err){
+        console.error(err);
+        return false;
+    }
+};

@@ -141,6 +141,7 @@ export class PlaysInModule implements events.IStats {
         const returnInstance = playerInstance.get(role)!
         return returnInstance
     }
+
     private getMostPlayedClass(player: string): string {
         let mostPlayed: string = "NA"
         let mostPlaytime: number = 0
@@ -153,6 +154,7 @@ export class PlaysInModule implements events.IStats {
 
 
     }
+
     private getMean(input: number[]): number {
         if (input.length != 0)
             return input.reduce((a, b) => a + b) / input.length
@@ -179,6 +181,7 @@ export class PlaysInModule implements events.IStats {
         playerInstance.team = player.team
         return playerInstance
     }
+
     private getOrCreateStats(player: PlayerInfo): IInternalStats {
         if (!(player.id in this.internalStats)) {
             this.internalStats[player.id] = this.defaultInternalStats()
@@ -279,6 +282,7 @@ export class PlaysInModule implements events.IStats {
             player.sentriesBuilt += 1
         }
     }
+
     onObjectDestroyed(event: events.IObjectDestroyedEvent) {
         if (!this.gameState.isLive) return
         if (event.builtObject == events.Building.Sentry) {
@@ -286,6 +290,7 @@ export class PlaysInModule implements events.IStats {
             player.sentriesDestroyed += 1
         }
     }
+
     onAssist(event: events.IAssistEvent) {
         if (!this.gameState.isLive) return
         const assister: IPlayerStats = this.getOrCreatePlayer(event.assister)
@@ -310,6 +315,7 @@ export class PlaysInModule implements events.IStats {
         const stats: IInternalStats = this.getOrCreateStats(event.player)
         stats.lastSpawnTime = event.timestamp
     }
+
     onRole(event: events.IRoleEvent) {
         if (!this.gameState.isLive) return
         this.trackingStop(event.player.id, event.timestamp)
@@ -334,7 +340,6 @@ export class PlaysInModule implements events.IStats {
         }
     }
     //Medic specific events
-
     onCharge(event: events.IChargeEvent) {
         if (!this.gameState.isLive) return
         const player: IPlayerStats = this.getOrCreatePlayer(event.player)
@@ -346,12 +351,14 @@ export class PlaysInModule implements events.IStats {
         player.chargesByType[event.medigunType] += 1
         stats.timesBeforeUsing.push(event.timestamp - stats.lastChargeObtainedTime)
     }
+    
     onChargeReady(event: events.IChargeReadyEvent) {
         if (!this.gameState.isLive) return
         const stats: IInternalStats = this.getOrCreateStats(event.player)
         stats.lastChargeObtainedTime = event.timestamp
         stats.timesToBuild.push(event.timestamp - Math.max(stats.lastUsedTime, stats.lastSpawnTime))
     }
+
     onLostUberAdv(event: events.ILostUberAdvantageEvent) {
         if (!this.gameState.isLive) return
         const player: IPlayerStats = this.getOrCreatePlayer(event.player)

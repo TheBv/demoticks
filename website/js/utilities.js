@@ -9,11 +9,11 @@ Object.defineProperty(Array.prototype, "remove", {
 });
 
 //Splits an array into chunks with the maximum size of chunk_size
-function chunkArray(array, chunk_size) {
+function chunkArray(array, chunkSize) {
     const tempArray = [];
 
-    for (let index = 0; index < array.length; index += chunk_size) {
-        const chunk = array.slice(index, index + chunk_size);
+    for (let index = 0; index < array.length; index += chunkSize) {
+        const chunk = array.slice(index, index + chunkSize);
         tempArray.push(chunk);
     }
 

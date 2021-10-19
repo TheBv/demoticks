@@ -8,6 +8,23 @@
         {
             "type": "pwa-node",
             "request": "launch",
+            "name": "Launch Program SQL-Logging",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}\\Server.ts",
+            "preLaunchTask": "tsc: build - tsconfig.json",
+            "outFiles": [
+                "${workspaceFolder}/build/**/*.js"
+            ],
+            "env": {
+                "mysqllogging": "1"
+            },
+            "sourceMaps": true,
+        },
+        {
+            "type": "pwa-node",
+            "request": "launch",
             "name": "Launch Program",
             "skipFiles": [
                 "<node_internals>/**"
@@ -17,7 +34,9 @@
             "outFiles": [
                 "${workspaceFolder}/build/**/*.js"
             ],
-            //"args": ["DEBUG=sequelize:sql*"],
+            "env": {
+                "mysqllogging": "0"
+            },
             "sourceMaps": true,
         }
     ]

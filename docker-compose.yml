@@ -1,9 +1,9 @@
 version: '3'
 services:
     db:
-        image: mysql:5.7
+        image: mysql:8.0
         volumes:
-            - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
+          - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
         environment:
           MYSQL_ROOT_PASSWORD: password
           MYSQL_DATABASE: demoticks 
@@ -12,16 +12,17 @@ services:
         ports:
           - "3306:3306"
         expose:
-            - "3306" 
+          - "3306" 
         container_name: demoticks_mysql
         networks: 
-            - demoticks_net
+          - demoticks_net
     web:
-        image: henru.de/thebv/demoticks-node-app:latest
+        image: thebv/demoticks-node-app:latest
+        #build: .
         environment:
-        - sqlHost=demoticks_mysql
+          - sqlHost=demoticks_mysql
         external_links:
-            - demoticks_mysql
+          - demoticks_mysql
         container_name: demoticks_web
         networks: 
           - demoticks_net

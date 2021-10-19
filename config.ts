@@ -7,6 +7,7 @@ interface IConfig {
     MySQLdatabase: string
     MySQLdatabaseStats : string
     MySQLConnectionLimit: number
+    MySQLLogging: boolean
     requestLimit: number
 }
 
@@ -19,6 +20,7 @@ export const config: IConfig = {
     MySQLdatabase: process.env.sqldatabase || "demoticks",
     MySQLdatabaseStats: process.env.sqldatabase || "demoticksStats",
     MySQLConnectionLimit: 50,
+    MySQLLogging: parseInt(process.env.mysqllogging|| "0") == 1 ? true : false,
     requestLimit: 400,
 };
 

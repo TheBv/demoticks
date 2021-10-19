@@ -1,14 +1,14 @@
 
-import {events} from "logstf-parser";
-import {IGameState,PlayerInfo} from "logstf-parser";
+import { events } from "logstf-parser";
+import { IGameState, PlayerInfo } from "logstf-parser";
 import { defaultMysqlLog, IMysqlLog } from "../DatabaseModel";
-interface IPlayerStats{
+interface IPlayerStats {
     team: string | null
     kills: number
     dmg: number
 }
 
-interface ITeamRoundStats{
+interface ITeamRoundStats {
     score: number
     kills: number
     dmg: number
@@ -19,26 +19,26 @@ interface Round {
     lengthInSeconds: number
     firstCap: string
     winner: events.Team | null
-    team: {Blue: ITeamRoundStats, Red: ITeamRoundStats}
+    team: { Blue: ITeamRoundStats, Red: ITeamRoundStats }
     events: Array<any>
-    players: {[id:string]: IPlayerStats}
+    players: { [id: string]: IPlayerStats }
 }
 
-export class LogModule implements events.IStats{
+export class LogModule implements events.IStats {
     public identifier: string
     private gameState: IGameState
     private rounds: Round[]
-    private currentRoundPlayers: {[id:string]: IPlayerStats}
+    private currentRoundPlayers: { [id: string]: IPlayerStats }
     private currentRoundEvents: Array<any>
-    private currentRoundTeams: {Blue: ITeamRoundStats, Red: ITeamRoundStats}
+    private currentRoundTeams: { Blue: ITeamRoundStats, Red: ITeamRoundStats }
     private currentRoundStartTime: number
     private currentRoundPausedStart: number
     private currentRoundPausedTime: number
     private totalLengthInSeconds: number
-    private firstCap : string
-    private mysqlLog : IMysqlLog
+    private firstCap: string
+    private mysqlLog: IMysqlLog
     private gameStartTime: number
-    private paused : boolean
+    private paused: boolean
 
     constructor(gameState: IGameState) {
         this.identifier = 'game'
@@ -47,7 +47,7 @@ export class LogModule implements events.IStats{
         this.currentRoundPausedStart = 0
         this.currentRoundPausedTime = 0
         this.currentRoundEvents = []
-        this.currentRoundTeams = {Blue: this.defaultTeamStats(0), Red: this.defaultTeamStats(0)}
+        this.currentRoundTeams = { Blue: this.defaultTeamStats(0), Red: this.defaultTeamStats(0) }
         this.currentRoundPlayers = {}
         this.firstCap = ""
         this.totalLengthInSeconds = 0
@@ -81,7 +81,7 @@ export class LogModule implements events.IStats{
     }
 
     private newRound(timestamp: number) {
-        if (this.rounds.length == 0){
+        if (this.rounds.length == 0) {
             this.gameStartTime = timestamp
         }
         this.currentRoundEvents = []
@@ -89,7 +89,7 @@ export class LogModule implements events.IStats{
         this.currentRoundPausedTime = 0
         this.currentRoundPausedStart = 0
         this.gameState.isLive = true
-        this.currentRoundTeams = {Blue: this.defaultTeamStats(this.currentRoundTeams.Blue.score), Red:this.defaultTeamStats(this.currentRoundTeams.Red.score)}
+        this.currentRoundTeams = { Blue: this.defaultTeamStats(this.currentRoundTeams.Blue.score), Red: this.defaultTeamStats(this.currentRoundTeams.Red.score) }
         this.firstCap = ""
         this.currentRoundPlayers = {}
     }
@@ -124,22 +124,23 @@ export class LogModule implements events.IStats{
     onKill(event: events.IKillEvent) {
         if (!this.gameState.isLive) return
         const attacker: IPlayerStats = this.getOrCreatePlayer(event.attacker)
-        attacker.kills +=1
-        if (attacker.team == events.Team.Blue){
-            this.currentRoundTeams.Blue.kills +=1
+        attacker.kills += 1
+        if (attacker.team == events.Team.Blue) {
+            this.currentRoundTeams.Blue.kills += 1
         }
-        if (attacker.team == events.Team.Red){
-            this.currentRoundTeams.Red.kills +=1
+        if (attacker.team == events.Team.Red) {
+            this.currentRoundTeams.Red.kills += 1
         }
     }
-    onDamage(event: events.IDamageEvent){
+    
+    onDamage(event: events.IDamageEvent) {
         if (!this.gameState.isLive) return
         const attacker: IPlayerStats = this.getOrCreatePlayer(event.attacker)
         attacker.dmg += event.damage
-        if (attacker.team == events.Team.Blue){
+        if (attacker.team == events.Team.Blue) {
             this.currentRoundTeams.Blue.dmg += event.damage
         }
-        if (attacker.team == events.Team.Red){
+        if (attacker.team == events.Team.Red) {
             this.currentRoundTeams.Red.dmg += event.damage
         }
     }
@@ -165,7 +166,7 @@ export class LogModule implements events.IStats{
     onRoundEnd(event: events.IRoundEndEvent) {
         this.endRound(event.timestamp, event.winner)
         // Workaround for the case that the "Game_Over" event triggers before the "Round_Win" event
-        if (!this.gameState.isLive){
+        if (!this.gameState.isLive) {
             const roundLength = event.timestamp - this.currentRoundStartTime - this.currentRoundPausedTime
             const lastRound = this.getLastRound()
             // Check to make sure the round_win event happened at the same time as
@@ -199,19 +200,20 @@ export class LogModule implements events.IStats{
             this.currentRoundPausedStart = 0
         }
     }
-        // Added to fix pause/unpause desync issues 
+    // Added to fix pause/unpause desync issues 
     onTriggered(event: events.ITriggeredEvent) {
         if (this.gameState.isLive) return
         if (!this.paused) return
         this.onUnpause({
-            timestamp : event.timestamp
+            timestamp: event.timestamp
         })
     }
 
     onMapLoad(event: events.IMapLoadEvent) {
         this.gameState.mapName = event.mapName
     }
-    onFlag(event: events.IFlagEvent){
+
+    onFlag(event: events.IFlagEvent) {
         if (!this.gameState.isLive) return
         const time = event.timestamp - this.currentRoundStartTime
         this.currentRoundEvents.push({
@@ -221,10 +223,11 @@ export class LogModule implements events.IStats{
             team: event.player.team
         })
     }
+
     onCapture(event: events.ICaptureEvent) {
         if (!this.gameState.isLive) return
         const time = event.timestamp - this.currentRoundStartTime
-        if (this.currentRoundEvents.filter(evt => evt.type == 'capture' ).length == 0){
+        if (this.currentRoundEvents.filter(evt => evt.type == 'capture').length == 0) {
             this.firstCap = event.team;
         }
         this.currentRoundEvents.push({
@@ -235,22 +238,23 @@ export class LogModule implements events.IStats{
             playerIds: event.players.map(player => player.id)
         })
     }
-    finish(){
+
+    finish() {
         this.mysqlLog.bluePoints = this.getLastRound().team.Blue.score
         this.mysqlLog.redPoints = this.getLastRound().team.Red.score
         this.mysqlLog.date = this.gameStartTime + this.totalLengthInSeconds
         this.mysqlLog.timeTaken = this.totalLengthInSeconds
         //Get the round with the most players and use that round's players as the max playeramount
-        this.mysqlLog.playeramount = Object.values(this.rounds.reduce((a,b)=> {
-            if (Object.values(a.players) > Object.values(b.players)){
+        this.mysqlLog.playeramount = Object.values(this.rounds.reduce((a, b) => {
+            if (Object.values(a.players) > Object.values(b.players)) {
                 return a
             }
             return b
         }).players).length;
-        
+
     }
 
-    toJSON(): IMysqlLog{
+    toJSON(): IMysqlLog {
         return this.mysqlLog;
     }
 }

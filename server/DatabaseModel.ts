@@ -1,26 +1,26 @@
-import {Sequelize, Model, DataTypes } from "sequelize"
-import {config} from './../config'
+import { Sequelize, Model, DataTypes } from "sequelize"
+import { config } from './../config'
 
 //TODO: Accuracy for plays_in, implement classes table, add advantageLost,chargeUsed,weapon to events
 //TODO: Players from now on don't have a name by default, should get a different name for each website?
 //TODO: Should players/logs have timestamps?
 //TODO: Update default pooling settings?
-const sequelize = new Sequelize(config.MySQLdatabase,config.MySQLUser,config.MySQLPassword,{
+export const sequelize = new Sequelize(config.MySQLdatabase, config.MySQLUser, config.MySQLPassword, {
     dialect: 'mysql',
     host: config.MySQLHost,
     port: config.MySQLPort,
-    logging: true,
+    logging: config.MySQLLogging
 })
 export interface IMysqlEvent {
     eventid: string | null,
     logid: number,
     attacker: string | null,
-    victim : string | null,
+    victim: string | null,
     killstreak: number | null,
     headshot: boolean,
     airshot: boolean,
     medicDrop: boolean,
-    tick: number | null,
+    second: number | null,
     capture: number | null,
     kill: boolean,
     backstab: boolean,
@@ -29,13 +29,13 @@ export interface IMysqlEvent {
     chargeUsed: boolean,
     weapon: string | null
 }
-export interface IMysqlPlayer{
+export interface IMysqlPlayer {
     steam64: string,
+    name: string | null,
     etf2lName: string | null,
     ugcName: string | null,
     ozFortressName: string | null,
-    logstfName: string | null,
-    steamId3: string
+    logstfName: string | null
 }
 export interface IMysqlMap {
     logid: number,
@@ -83,40 +83,40 @@ export interface IMysqlPlaysInClasses {
     healsDistributed: number,
     class: string
 }
-export class Event extends Model<IMysqlEvent> implements IMysqlEvent{
+export class Event extends Model<IMysqlEvent> implements IMysqlEvent {
     eventid!: string | null
     logid!: number
     attacker!: string | null
-    victim! : string | null
+    victim!: string | null
     killstreak!: number | null
     headshot!: boolean
     airshot!: boolean
     medicDrop!: boolean
-    tick!: number | null
+    second!: number | null
     capture!: number | null
     kill!: boolean
     backstab!: boolean
     medicDeath!: boolean
     advantageLost!: number | null
-    chargeUsed! : boolean
-    weapon! : string | null
+    chargeUsed!: boolean
+    weapon!: string | null
 }
 
-export class Player extends Model<IMysqlPlayer> implements IMysqlPlayer{
+export class Player extends Model<IMysqlPlayer> implements IMysqlPlayer {
     steam64!: string
+    name!: string | null
     etf2lName!: string | null
     ugcName!: string | null
     ozFortressName!: string | null
     logstfName!: string | null
-    steamId3!: string
 }
 
-export class Map extends Model<IMysqlMap> implements IMysqlMap{
+export class Map extends Model<IMysqlMap> implements IMysqlMap {
     logid!: number
     mapName!: String | null
 }
 
-export class Log extends Model<IMysqlLog> implements IMysqlLog{
+export class Log extends Model<IMysqlLog> implements IMysqlLog {
     logid!: number
     date!: number
     redPoints!: number
@@ -126,7 +126,7 @@ export class Log extends Model<IMysqlLog> implements IMysqlLog{
     official!: boolean
 }
 
-export class DuplicateLog extends Model<IMysqlDuplicateLog> implements IMysqlDuplicateLog{
+export class DuplicateLog extends Model<IMysqlDuplicateLog> implements IMysqlDuplicateLog {
     logid!: number
     duplicateof!: number
 }
@@ -161,24 +161,29 @@ export class PlaysClasses extends Model<IMysqlPlaysInClasses> implements IMysqlP
 //TODO: Think about proper default values
 
 export const defaultMysqlPlayer = (): IMysqlPlayer => ({
+    name: null,
     etf2lName: null,
     ugcName: null,
     ozFortressName: null,
     logstfName: null,
-    steam64: "",
-    steamId3: ""
+    steam64: ""
+})
+
+export const defaultMysqlMap = (): IMysqlMap => ({
+    mapName: "",
+    logid: -1
 })
 
 export const defaultMysqlEvent = (): IMysqlEvent => ({
     eventid: null,
     logid: -1,
     attacker: null,
-    victim : null,
+    victim: null,
     killstreak: null,
     headshot: false,
     airshot: false,
     medicDrop: false,
-    tick: null,
+    second: null,
     capture: null,
     kill: false,
     backstab: false,
@@ -218,17 +223,17 @@ export const defaultMysqlLog = (): IMysqlLog => ({
 Map.init({
     logid: {
         type: DataTypes.INTEGER,
-        primaryKey : true,
+        primaryKey: true,
         allowNull: false
     },
     mapName: {
         type: DataTypes.CHAR,
     }
 
-},{
+}, {
     timestamps: false,
     sequelize,
-    tableName: "map"
+    tableName: "maps"
 });
 Event.init({
     eventid: {
@@ -242,11 +247,11 @@ Event.init({
         allowNull: false,
     },
     attacker: {
-        type: DataTypes.CHAR,
+        type: DataTypes.BIGINT,
         allowNull: false
     },
     victim: {
-        type: DataTypes.CHAR,
+        type: DataTypes.BIGINT,
     },
     killstreak: {
         type: DataTypes.INTEGER,
@@ -263,7 +268,7 @@ Event.init({
         type: DataTypes.BOOLEAN,
         allowNull: false
     },
-    tick: {
+    second: {
         type: DataTypes.INTEGER,
         allowNull: false
     },
@@ -295,7 +300,7 @@ Event.init({
         type: DataTypes.CHAR,
         allowNull: true
     }
-},{
+}, {
     timestamps: false,
     sequelize,
     tableName: "events"
@@ -306,7 +311,7 @@ Player.init({
         allowNull: false,
         primaryKey: true
     },
-    steamId3: {
+    name: {
         type: DataTypes.CHAR
     },
     etf2lName: {
@@ -321,7 +326,7 @@ Player.init({
     logstfName: {
         type: DataTypes.CHAR,
     }
-},{
+}, {
     timestamps: true,
     createdAt: false,
     sequelize,
@@ -351,7 +356,7 @@ Log.init({
     official: {
         type: DataTypes.BOOLEAN
     }
-},{
+}, {
     timestamps: false,
     sequelize,
     tableName: "logs"
@@ -366,7 +371,7 @@ DuplicateLog.init({
         type: DataTypes.INTEGER,
         allowNull: false
     }
-},{
+}, {
     timestamps: false,
     sequelize,
     tableName: "duplicatelogids"
@@ -379,7 +384,7 @@ PlaysIn.init({
         autoIncrement: true
     },
     steam64: {
-        type: DataTypes.CHAR,
+        type: DataTypes.BIGINT,
         allowNull: false
     },
     logid: {
@@ -434,7 +439,7 @@ PlaysIn.init({
         type: DataTypes.CHAR,
         allowNull: false
     },
-},{
+}, {
     timestamps: false,
     sequelize,
     tableName: 'plays_in'
@@ -476,13 +481,13 @@ PlaysClasses.init({
         type: DataTypes.INTEGER,
         allowNull: false
     }
-},{
+}, {
     timestamps: false,
     sequelize,
     tableName: 'plays_classes'
 })
 
-export const logEvents =  Log.hasMany(Event,{foreignKey: 'logid',as:'events'});
-
-Event.hasOne(Map);
+export const logEvents = Log.hasMany(Event, { foreignKey: 'logid', as: 'events' });
+Log.hasOne(Map, { foreignKey: 'logid', as: 'mapTable' });
+Event.hasOne(Map, { foreignKey: 'logid', as: 'map' });
 Event.hasMany(PlaysIn);
