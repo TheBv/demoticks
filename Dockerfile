@@ -6,8 +6,6 @@ RUN npm install
 
 COPY . . 
 
-COPY ./build ./build
-
 EXPOSE 4351
 
 RUN useradd -u 8877 demoticks
