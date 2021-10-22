@@ -9,7 +9,7 @@ const EXPECTED_OPTIONS_KEY = dataloader.EXPECTED_OPTIONS_KEY
 
 //TODO: update query to include custom Op's
 //TODO: return reasons: {success,markedAsDuplicate,duplicate,parsingError+reason}
-//TODO: Switch to sequilize-dataloader
+
 const opMap = new Map<string, symbol>();
 opMap.set("killstreak", Op.gte);
 opMap.set("advantageLost", Op.gte)
@@ -17,9 +17,13 @@ opMap.set("weapon", Op.like)
 
 const context = dataloader.createContext(sequelize);
 
-const cache = new LRU({ max: 500, maxAge: 1000 * 60 * 4 });
+const nameMatchCache = new LRU({ max: 500, maxAge: 1000 * 60 * 4 });
 
-const logidCache = new LRU({ max: 10000 });
+const steamNameCache = new LRU({max: 500, maxAge:1000*60*60});
+
+const mapidCache = new LRU({ max: 10000, maxAge: 1000*60*5});
+
+const logidCache = new LRU({ max: 10000});
 
 const eventType = new GraphQLObjectType({
     name: 'Event',
@@ -219,7 +223,9 @@ export const schema = new GraphQLSchema({
 
                 },
                 resolve: async (parent: any, args: any) => {
-                    if (!await MysqlMap.findByPk(Math.max(...args.logid), { [EXPECTED_OPTIONS_KEY]: context })) {
+                    //TODO: Update the map-check part
+                    const max = Math.max(...args.logid);
+                    if (!mapidCache.has(max) && !await MysqlMap.findByPk(Math.max(...args.logid))) {
                         try {
                             const steam64 = new SteamID(args.events[0].attacker)
                             if (steam64.isValid())
@@ -227,6 +233,7 @@ export const schema = new GraphQLSchema({
                         }
                         catch { }
                     }
+                    mapidCache.set(max, true);
                     return (await Log.findAll({
                         where: {
                             logid: { [Op.in]: args.logid },
@@ -276,13 +283,16 @@ export const schema = new GraphQLSchema({
                         try {
                             const steamId = new SteamID(args.steam64);
                             if (steamId.isValid()) {
-                                const player = await Player.findByPk(steamId.getSteamID64(), { [EXPECTED_OPTIONS_KEY]: context });
+                                if (steamNameCache.has(args.steam64))
+                                    return [steamNameCache.get(args.steam64)]
+                                const player = await Player.findByPk(steamId.getSteamID64());
                                 if (!player) {
                                     //TODO: function should possibly return player instead
                                     if (await updatePlayer(steamId.getSteamID64()))
-                                        return [await Player.findByPk(steamId.getSteamID64(), { [EXPECTED_OPTIONS_KEY]: context })];
+                                        return [await Player.findByPk(steamId.getSteamID64())];
                                 }
                                 else {
+                                    steamNameCache.set(args.steam64,player);
                                     return [player];
                                 }
 
@@ -292,14 +302,14 @@ export const schema = new GraphQLSchema({
                     }
                     //If a we're doing a general name lookup use that
                     if (args.name) {
-                        if (cache.has(args.name))
-                            return cache.get(args.name)
+                        if (nameMatchCache.has(args.name))
+                            return nameMatchCache.get(args.name)
                         const players = await Player.findAll({
                             where: {
                                 name: { [Op.like]: `%${args.name}%` }
                             }
                         })
-                        cache.set(args.name, players);
+                        nameMatchCache.set(args.name, players);
                         return players;
                     }
                     //Otherwise or every org name
