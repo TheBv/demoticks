@@ -56,7 +56,9 @@ class Event {
         MD: "medicDrop : true",
         BS: "backstab : true",
         MK: "medicDeath : true",
-        K: "kill : true"
+        K: "kill : true",
+        AL: "advantageLost : 1",
+        CU: "chargeUsed: true"
     }));
     EventsO = new Map(Object.entries({
         KS: "killstreak",
@@ -65,7 +67,9 @@ class Event {
         MD: "medicDrop",
         BS: "backstab",
         MK: "medicDeath",
-        K: "kill"
+        K: "kill",
+        AL: "advantageLost",
+        CU: "chargeUsed"
     }));
     subEvents = [];
 
