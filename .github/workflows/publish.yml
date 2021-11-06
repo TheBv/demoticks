@@ -29,6 +29,8 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+    - run: npx prisma generate
+    - run: npm run buildcjs
     - run: npm i minify@6.0.1 -g
     #Minify website js
     - run: mkdir ./website/js/output/
