@@ -1,36 +1,36 @@
 import { GraphQLBoolean, GraphQLInputObjectType, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLSchema, GraphQLString } from "graphql";
-import { DuplicateLog, Event, IMysqlEvent, Log, Map as MysqlMap, Player, sequelize } from './DatabaseModel';
-import { Op } from 'sequelize';
 import { batchParseLogs, updateMapTable, updatePlayer } from "./DatabaseHelper";
 import SteamID from "steamid";
 import LRU from 'lru-cache';
-const dataloader = require("dataloader-sequelize");
-const EXPECTED_OPTIONS_KEY = dataloader.EXPECTED_OPTIONS_KEY
+import { PrismaClient, events, players } from '@prisma/client'
+import { GraphQLBigInt } from './GraphQLBigInt'
 
 //TODO: update query to include custom Op's
 //TODO: return reasons: {success,markedAsDuplicate,duplicate,parsingError+reason}
+//TODO: look into prisma-graphql stuff
 
-const opMap = new Map<string, symbol>();
-opMap.set("killstreak", Op.gte);
-opMap.set("advantageLost", Op.gte)
-opMap.set("weapon", Op.like)
+const prisma = new PrismaClient()
 
-const context = dataloader.createContext(sequelize);
+const opMap = new Map<string, any>();
+opMap.set("killstreak", "gte");
+opMap.set("advantageLost", "gte")
+opMap.set("weapon", "like")
 
-const nameMatchCache = new LRU({ max: 500, maxAge: 1000 * 60 * 4 });
 
-const steamNameCache = new LRU({max: 500, maxAge:1000*60*60});
+const nameMatchCache = new LRU<string, players[]>({ max: 500, maxAge: 1000 * 60 * 4 });
 
-const mapidCache = new LRU({ max: 10000, maxAge: 1000*60*5});
+const steamNameCache = new LRU<BigInt, players>({ max: 500, maxAge: 1000 * 60 * 60 });
 
-const logidCache = new LRU({ max: 10000});
+const mapidCache = new LRU<[string, number], number>({ max: 10000, maxAge: 1000 * 60 * 5 });
+
+const logidCache = new LRU<number, boolean>({ max: 10000 });
 
 const eventType = new GraphQLObjectType({
     name: 'Event',
     description: 'An Event',
     fields: {
         eventid: {
-            type: GraphQLNonNull(GraphQLInt),
+            type: GraphQLNonNull(GraphQLBigInt),
             description: 'The internal event id'
         },
         logid: {
@@ -38,11 +38,11 @@ const eventType = new GraphQLObjectType({
             description: 'The corresponding logid'
         },
         attacker: {
-            type: GraphQLNonNull(GraphQLString),
+            type: GraphQLNonNull(GraphQLBigInt),
             description: 'The steam64 id from the attacker'
         },
         victim: {
-            type: GraphQLString,
+            type: GraphQLBigInt,
             description: 'The steam64 id from the victim'
         },
         killstreak: {
@@ -132,11 +132,11 @@ const eventInput = new GraphQLInputObjectType({
             description: 'The corresponding logid'
         },
         attacker: {
-            type: GraphQLString,
+            type: GraphQLBigInt,
             description: 'The steam64 id from the attacker'
         },
         victim: {
-            type: GraphQLString,
+            type: GraphQLBigInt,
             description: 'The steam64 id from the victim'
         },
         killstreak: {
@@ -189,7 +189,7 @@ const player = new GraphQLObjectType({
     description: 'Attributes of a player you want to receive data from',
     fields: {
         steam64: {
-            type: GraphQLString,
+            type: GraphQLBigInt,
         },
         name: {
             type: GraphQLString,
@@ -224,8 +224,14 @@ export const schema = new GraphQLSchema({
                 },
                 resolve: async (parent: any, args: any) => {
                     //TODO: Update the map-check part
-                    const max = Math.max(...args.logid);
-                    if (!mapidCache.has(max) && !await MysqlMap.findByPk(Math.max(...args.logid))) {
+                    const maxLogid = Math.max(...args.logid);
+                    const primaryAttacker = args.events[0].attacker
+                    const mapValues = queryWithCache(mapidCache, [primaryAttacker, maxLogid], {
+                        where: {
+                            logid: maxLogid
+                        }
+                    }, prisma.maps)
+                    if (!mapValues) {
                         try {
                             const steam64 = new SteamID(args.events[0].attacker)
                             if (steam64.isValid())
@@ -233,36 +239,36 @@ export const schema = new GraphQLSchema({
                         }
                         catch { }
                     }
-                    mapidCache.set(max, true);
-                    return (await Log.findAll({
+                    const maps = await prisma.maps.findMany({
                         where: {
-                            logid: { [Op.in]: args.logid },
-                        },
-                        include: [{
-                            model: Event,
-                            as: 'events',
-                            where: {
-                                [Op.or]:
-                                    args.events.map((event: IMysqlEvent) => { return { [Op.and]: applyOp(event) } })
-                            }
-
-                        }, {
-                            model: MysqlMap,
-                            as: "mapTable",
-                            required: true,
-                        }],
-                        order: [["logid", "ASC"],["events","attacker","DESC"],["events","second","ASC"]]
-                    })).map((result: any) => {
-                        result.map = result.mapTable.mapName;
-                        return result;
+                            logid: { in: args.logid }
+                        }
                     })
+                    const returny: any[] = [];
+                    (await prisma.logs.findMany({
+                        where: {
+                            logid: { in: args.logid },
+                        },
+                        include: {
+                            events: {
+                                where: { OR: args.events.map((event: events) => { return { AND: applyOp(event) } }) },
+                                orderBy: [{ attacker: 'desc' }, { second: 'asc' }]
+                            }
+                        },
+                        orderBy: [{ logid: 'asc' }]
+                    })).forEach((result: any) => {
+                        result.map = maps.find((map) => map.logid == result.logid)?.mapName;
+                        if (result.events.length > 0)
+                            returny.push(result);
+                    })
+                    return returny;
                 }
             },
             player: {
                 type: GraphQLList(player),
                 args: {
                     steam64: {
-                        type: GraphQLString
+                        type: GraphQLBigInt
                     },
                     name: {
                         type: GraphQLString
@@ -283,39 +289,40 @@ export const schema = new GraphQLSchema({
                         try {
                             const steamId = new SteamID(args.steam64);
                             if (steamId.isValid()) {
-                                if (steamNameCache.has(args.steam64))
-                                    return [steamNameCache.get(args.steam64)]
-                                const player = await Player.findByPk(steamId.getSteamID64());
-                                if (!player) {
-                                    //TODO: function should possibly return player instead
-                                    if (await updatePlayer(steamId.getSteamID64()))
-                                        return [await Player.findByPk(steamId.getSteamID64())];
-                                }
-                                else {
-                                    steamNameCache.set(args.steam64,player);
-                                    return [player];
+                                const player = await queryWithCache(steamNameCache,
+                                    BigInt(steamId.getSteamID64()), {
+                                    where: { steam64: BigInt(steamId.getSteamID64()) }
+                                }, prisma.players)
+                                if (player)
+                                    return [player]
+                                //TODO: function should possibly return player instead
+                                //TODO: use bigint internally?
+                                if (await updatePlayer(steamId.getSteamID64())) {
+                                    const updatedPlayer = (await prisma.players.findFirst({
+                                        where: { steam64: BigInt(steamId.getSteamID64()) }
+                                    }))
+                                    if (updatedPlayer)
+                                        return [updatedPlayer];
                                 }
 
                             }
                         }
-                        catch { }
+                        catch (err) {
+                            console.error(err)
+                        }
                     }
                     //If a we're doing a general name lookup use that
                     if (args.name) {
-                        if (nameMatchCache.has(args.name))
-                            return nameMatchCache.get(args.name)
-                        const players = await Player.findAll({
+                        return queryWithCacheMany(nameMatchCache, args.name, {
                             where: {
-                                name: { [Op.like]: `%${args.name}%` }
+                                name: { contains: args.name }
                             }
-                        })
-                        nameMatchCache.set(args.name, players);
-                        return players;
+                        }, prisma.players)
                     }
-                    //Otherwise or every org name
-                    return await Player.findAll({
+                    //Otherwise for every org name
+                    return await prisma.players.findMany({
                         where: {
-                            [Op.or]: getPlayerData(args)
+                            OR: getPlayerData(args)
                         }
                     })
                 }
@@ -336,26 +343,48 @@ export const schema = new GraphQLSchema({
                     }
                     if (unCachedIds.length == 0)
                         return [true];
-                    const logsFound = (await Log.findAll({
+                    const logsFound = (await prisma.logs.findMany({
                         where: {
-                            logid: { [Op.in]: unCachedIds }
+                            logid: { in: unCachedIds }
                         },
-                        attributes: ["logid"]
+                        select: {
+                            logid: true
+                        }
                     })).map((log) => log.logid);
-                    unCachedIds = unCachedIds.filter(logid => {logidCache.set(logid,true); return !logsFound.includes(logid)});
-                    const duplicateLogsFound = (await DuplicateLog.findAll({
+                    unCachedIds = unCachedIds.filter(logid => { logidCache.set(logid, true); return !logsFound.includes(logid) });
+                    const duplicateLogsFound = (await prisma.duplicatelogids.findMany({
                         where: {
-                            logid: { [Op.in]: unCachedIds }
+                            logid: { in: unCachedIds }
                         },
-                        attributes: ["logid"]
+                        select: {
+                            logid: true
+                        }
                     })).map((log) => log.logid);
-                    unCachedIds = unCachedIds.filter(logid => {logidCache.set(logid,true); return !duplicateLogsFound.includes(logid)});
+                    unCachedIds = unCachedIds.filter(logid => { logidCache.set(logid, true); return !duplicateLogsFound.includes(logid) });
                     return batchParseLogs(unCachedIds);
                 }
             }
         }
     }),
 });
+
+async function queryWithCache<K, V>(cache: LRU<K, V>, key: K, query: any, table: any): Promise<V> {
+    if (cache.get(key) != undefined)
+        return cache.get(key)!
+    const dbResult = await table.findFirst(query);
+    if (dbResult)
+        cache.set(key, dbResult)
+    return dbResult
+}
+
+async function queryWithCacheMany<K, V>(cache: LRU<K, V>, key: K, query: any, table: any): Promise<V> {
+    if (cache.get(key) != undefined)
+        return cache.get(key)!
+    const dbResult = await table.findMany(query);
+    if (dbResult)
+        cache.set(key, dbResult)
+    return dbResult
+}
 
 function getPlayerData(args: any) {
     interface LooseObject {
@@ -364,31 +393,38 @@ function getPlayerData(args: any) {
     const data: LooseObject = {};
 
     if (args.etf2lName) {
-        data.etf2lName = { [Op.like]: `%${args.etf2lName}%` }
+        data.etf2lName = { contains: args.etf2lName }
     }
     if (args.ugcName) {
-        data.ugcName = { [Op.like]: `%${args.ugcName}%` }
+        data.ugcName = { contains: args.ugcName }
     }
     if (args.logstfName) {
-        data.logstfName = { [Op.like]: `%${args.logstfName}%` }
+        data.logstfName = { contains: args.logstfName }
     }
 
     return data;
 }
 
-function applyOp(event: IMysqlEvent) {
+function applyOp(event: events) {
     interface LooseObject {
         [key: string]: any
     }
     const data: LooseObject = {};
-    Object.entries(event).forEach((value: [string, number | boolean]) => {
-        const key = value[0];
+    for (let [key, value] of Object.entries(event)) {
+        if (typeof value == 'string') {
+            value = BigInt(value)
+        }
         if (opMap.has(key)) {
-            data[key] = { [opMap.get(key) || Op.eq]: value[1] }
+            if (opMap.get(key) == "like")
+                data[key] = { like: value }
+            else if (opMap.get(key) == "gte")
+                data[key] = { gte: value }
+            else
+                data[key] = { equals: value }
         }
         else {
-            data[key] = value[1]
+            data[key] = value
         }
-    })
+    }
     return data
 }

@@ -5,12 +5,13 @@ import cors from 'cors';
 import cron from 'cron';
 import { schema } from './server/GraphQl';
 import { config } from './config'
-import { updateDatabaseNames} from './server/DatabaseHelper'
+import { updateDatabaseNames } from './server/DatabaseHelper'
 
 const job = new cron.CronJob('*/5 * * * *', () => {
     console.log("***Updating Player names***");
     updateDatabaseNames();
 });
+
 job.start();
 
 app.use(cors())
@@ -29,5 +30,5 @@ app.get('/', function (_req: express.Request, res: express.Response) {
 
 app.listen(config.port, () => {
     console.log(`Server is listening on port ${config.port}`);
-    console.log(`MYSQLServer host: ${config.MySQLHost}`);
+    console.log(process.env.DATABASE_URL)
 });

@@ -1,26 +1,19 @@
 import { LogParser } from 'logstf-parser'
-import { DuplicateLog, Event, IMysqlDuplicateLog, IMysqlEvent, IMysqlLog, IMysqlPlayer, IMysqlPlaysIn, Log, Player, PlaysIn } from "./DatabaseModel";
 import { EventsModule } from "./logmodules/EventModule";
 import { LogModule } from "./logmodules/LogModule";
 import { PlaysInModule } from "./logmodules/PlaysInModule";
 import { PlayerModule } from "./logmodules/PlayerModule";
 import { PlayerClassModule } from "./logmodules/PlayerClassModule";
-import { UniqueConstraintError } from 'sequelize';
+import { PrismaClient } from '@prisma/client'
 
 
-interface LogData {
-    logData: IMysqlLog[],
-    players: IMysqlPlayer[],
-    playsIn: IMysqlPlaysIn[],
-    events: IMysqlEvent[]
-}
-
+const prisma = new PrismaClient()
 const parser = new LogParser()
 parser.useCustomGameState();
 parser.addModule(LogModule);
 parser.addModule(PlayerModule);
 parser.addModule(EventsModule);
-parser.addModule(PlayerClassModule);
+//parser.addModule(PlayerClassModule);
 parser.addModule(PlaysInModule);
 parser.useSteam64Id();
 
@@ -31,69 +24,63 @@ export async function parseAndPopulateDatabase(lines: string[], logid: number): 
     const eventsModule = game.modules.find(a => { return a instanceof EventsModule })
     const playerClassModule = game.modules.find(a => { return a instanceof PlayerClassModule })
     const playsInModule = game.modules.find(a => { return a instanceof PlaysInModule })
-    if (logModule instanceof LogModule) {
+    if (playerModule instanceof PlayerModule) {
+        await prisma.players.createMany({ data: playerModule.toJSON(), skipDuplicates: true })
+    }
+    if (logModule instanceof LogModule && playsInModule instanceof PlaysInModule && eventsModule instanceof EventsModule) {
         const logData = logModule.toJSON()
         logData.logid = logid;
+        const playsInData = playsInModule.toJSON();
+        const eventsData = eventsModule.toJSON();
         try {
-            await Log.create(logData)
+            await prisma.logs.create({
+                data: {
+                    logid: logData.logid,
+                    date: logData.date,
+                    redPoints: logData.redPoints,
+                    bluePoints: logData.bluePoints,
+                    timeTaken: logData.timeTaken,
+                    playeramount: logData.playeramount,
+                    official: logData.official,
+                    plays_in: {
+                        createMany: {
+                            data: playsInData
+                        }
+                    },
+                    events: {
+                        createMany: {
+                            data: eventsData
+                        }
+                    }
+                }
+            });
         }
         catch (err: any) {
-            if (err instanceof UniqueConstraintError) {
-                const subError = err.errors[0];
-                if (subError.validatorKey == 'not_unique' && subError.path == 'logs.dublicateLogs') {
-                    Log.findOne({
-                        where: {
-                            date: logData.date,
-                            redPoints: logData.redPoints,
-                            bluePoints: logData.bluePoints,
-                            timeTaken: logData.timeTaken,
-                            playeramount: logData.playeramount
-                        },
-                        attributes: ["logid"]
-                    }).then((duplicateOf: Log | null) => {
-                        if (!duplicateOf) return;
-                        const duplicateLog: IMysqlDuplicateLog = {
-                            logid: logid,
-                            duplicateof: duplicateOf.logid
-                        }
-                        DuplicateLog.create(duplicateLog).catch(err => { console.log(err) });
-                    }).catch(err => console.error(err));
-                    return false;
-                }
+            if (err.code == 'P2002' && err.meta.target == 'duplicateLogs') {
+                prisma.logs.findFirst({
+                    where: {
+                        date: logData.date,
+                        redPoints: logData.redPoints,
+                        bluePoints: logData.bluePoints,
+                        timeTaken: logData.timeTaken,
+                        playeramount: logData.playeramount
+                    }
+                }).then((value) => {
+                    if (!value) return
+                    prisma.duplicatelogids.create({ data: { logid: logid, duplicateof: value.logid } })
+                }).catch(err => console.error(err));
+                return true;
             }
-            console.error(err);
-            return false;
+            else {
+                console.error(err);
+                return false;
+            }
         }
-    }
-    if (playerModule instanceof PlayerModule) {
-        const players = playerModule.toJSON();
-        try {
-            await Player.bulkCreate(players, {
-                ignoreDuplicates: true
-            })
-        }
-        catch (err) {
-            console.error(err);
-            return false;
-        }
-    }
-    if (playsInModule instanceof PlaysInModule) {
-        const playsInData = playsInModule.toJSON();
-        playsInData.forEach(playsIn => { playsIn.logid = logid })
-        await PlaysIn.bulkCreate(playsInData).catch((err) => console.error(err))
-    }
-    if (eventsModule instanceof EventsModule) {
-        const eventsData = eventsModule.toJSON();
-        eventsData.forEach(event => { event.logid = logid })
-        await Event.bulkCreate(eventsData).catch((err) => console.error(err))
     }
     if (playerClassModule instanceof PlayerClassModule) {
         //TODO:
-        //await Player.bulkCreate(playerClassModule.toJSON())
+        //await prisma.players.createMany({data: playerClassModule.toJSON()})
     }
     return true
 }
 
-async function populateDatabase(logData: LogData) {
-
-}

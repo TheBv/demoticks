@@ -284,7 +284,7 @@ async function startSearch() {
         return 0;
     }
     searchQuery.setLogIds(logs);
-    await addEvents(searchQuery.logIds, 30, updateCount);
+    await addEvents(searchQuery.logIds, 40, updateCount);
     let queryResults = await queryData(searchQuery.toQuery()).catch(error => {
         if (error === SyntaxError) {
             alert("Something with the selected data is wrong.");

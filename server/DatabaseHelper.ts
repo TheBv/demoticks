@@ -2,56 +2,44 @@ import axios from 'axios';
 import JSZip from 'jszip';
 import { parseAndPopulateDatabase } from './LogParsing'
 import { fetchName, fetchNames } from './FetchNames'
-import { defaultMysqlMap, defaultMysqlPlayer, IMysqlMap, IMysqlPlayer, Map, Player } from './DatabaseModel'
-import SteamId from 'steamid'
+import { defaultMap, defaultPlayer } from "./DatabaseModelPrisma";
+import { players, PrismaClient, maps } from "@prisma/client";
+
+
+const prisma = new PrismaClient()
 
 export async function updateDatabaseNames(): Promise<boolean> {
     //TODO: make limit configurable
-    const players = await Player.findAll({
+    const players = await prisma.players.findMany({
         where: { name: null },
-        limit: 10
+        take: 10,
+        orderBy: { updatedAt: 'asc' }
     })
-
-    const mysqlPlayers: IMysqlPlayer[] = [];
-    //No idea why I have to do this but the steam64 id seems to be null otherwise when bulk creating
-    for (const player of players) {
-        const mysqlPlayer = defaultMysqlPlayer();
-        mysqlPlayer.steam64 = player.steam64;
-        mysqlPlayers.push(mysqlPlayer);
-    }
-    await fetchNames(mysqlPlayers);
-    await Player.bulkCreate(mysqlPlayers, {
-        updateOnDuplicate: ["name", "etf2lName", "logstfName", "ozFortressName", "ugcName"]
-    }).catch((err) => { console.error(err); return false });
-    return true;
+    return await updatePlayers(players);
 }
-
-/*export async function updatePlayerSteamId3(steamId3: string): Promise<boolean> {
-    return updatePlayer(new SteamId(steamId3).getSteamID64())
-}*/
 
 export async function updatePlayer(steam64: string): Promise<boolean> {
-    const player = defaultMysqlPlayer()
-    player.steam64 = steam64;
+    const player = defaultPlayer()
+    player.steam64 = BigInt(steam64);
     await fetchName(player);
-    await Player.upsert(player);
+    await prisma.players.upsert({
+        create: player,
+        update: player,
+        where: { steam64: player.steam64 }
+    });
     return true;
 }
 
-/*export async function updatePlayersSteamId3(steamId3: string[]): Promise<boolean> {
-    return updatePlayers(steamId3.map((id) => new SteamId(id).getSteamID64()));
-}*/
 
-export async function updatePlayers(steam64: string[]): Promise<boolean> {
-    const players = steam64.map((steam64) => {
-        const player = defaultMysqlPlayer()
-        player.steam64 = steam64;
-        return player;
-    })
+export async function updatePlayers(players: players[]): Promise<boolean> {
     await fetchNames(players);
-    await Player.bulkCreate(players, {
-        updateOnDuplicate: ["etf2lName", "logstfName", "ozFortressName", "ugcName"]
-    }).catch((err) => { console.error(err); return false });
+    for (const player of players) {
+        await prisma.players.upsert({
+            create: player,
+            update: player,
+            where: { steam64: player.steam64 }
+        })
+    }
     return true;
 }
 
@@ -61,16 +49,14 @@ export async function updateMapTable(steam64: string, limit: number): Promise<bo
         if (!response.success) {
             return false;
         }
-        const maps: IMysqlMap[] = []
+        const maps: maps[] = []
         for (const log of response.logs) {
-            const mysqlMap = defaultMysqlMap();
+            const mysqlMap = defaultMap();
             mysqlMap.logid = log.id;
             mysqlMap.mapName = log.map;
             maps.push(mysqlMap);
         }
-        await Map.bulkCreate(maps, {
-            ignoreDuplicates: true
-        });
+        await prisma.maps.createMany({ data: maps, skipDuplicates: true });
         return true;
     }
     catch (error) {

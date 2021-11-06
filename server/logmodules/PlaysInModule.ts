@@ -1,6 +1,8 @@
 import { events, IGameState, PlayerInfo } from "logstf-parser"
-import { defaultMysqlPlaysIn, IMysqlPlaysIn } from "../DatabaseModel"
-import SteamID = require('steamid');
+import { defaultPlaysIn } from "../DatabaseModelPrisma"
+import { Prisma } from '@prisma/client'
+import plays_inCreateManyLogs = Prisma.plays_inCreateManyLogsInput
+
 interface IMedicStats {
     advantagesLost: number,
     biggestAdvantageLost: number,
@@ -351,7 +353,7 @@ export class PlaysInModule implements events.IStats {
         player.chargesByType[event.medigunType] += 1
         stats.timesBeforeUsing.push(event.timestamp - stats.lastChargeObtainedTime)
     }
-    
+
     onChargeReady(event: events.IChargeReadyEvent) {
         if (!this.gameState.isLive) return
         const stats: IInternalStats = this.getOrCreateStats(event.player)
@@ -422,15 +424,13 @@ export class PlaysInModule implements events.IStats {
         }
     }
 
-    toJSON(): IMysqlPlaysIn[] {
-        const mysqlPlaysIn: IMysqlPlaysIn[] = []
+    toJSON(): plays_inCreateManyLogs[] {
+        const mysqlPlaysIn: plays_inCreateManyLogs[] = []
         for (const key in this.players) {
             const player = this.players[key];
-            const mysqlPlayer = defaultMysqlPlaysIn()
+            const mysqlPlayer = defaultPlaysIn()
             try {
-                const steamId = new SteamID(key)
-                if (!steamId.isValid()) continue;
-                mysqlPlayer.steam64 = steamId.getSteamID64();
+                mysqlPlayer.steam64 = BigInt(key);
                 mysqlPlayer.kills = player.kills
                 mysqlPlayer.assists = player.assists
                 mysqlPlayer.deaths = player.deaths
@@ -450,7 +450,7 @@ export class PlaysInModule implements events.IStats {
                         mysqlPlayer.ubers += charge
                     }
                     else {
-                        console.info("Found unknow charge named: " + chargeName)
+                        // console.info("Found unknow charge named: " + chargeName)
                         mysqlPlayer.ubers += charge
                     }
                 }

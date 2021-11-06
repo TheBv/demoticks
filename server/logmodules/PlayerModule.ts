@@ -1,5 +1,7 @@
 import { events, IGameState, PlayerInfo } from "logstf-parser";
-import { defaultMysqlPlayer, IMysqlPlayer } from "../DatabaseModel";
+import { defaultPlayer } from "../DatabaseModelPrisma";
+import { players as IMysqlPlayer, Prisma } from '@prisma/client'
+
 
 export class PlayerModule implements events.IStats {
     public identifier: string
@@ -12,9 +14,10 @@ export class PlayerModule implements events.IStats {
     }
 
     private addPlayer(player: PlayerInfo) {
-        if (!this.players.find(p => p.steam64 == player.id)) {
-            const newPlayer = defaultMysqlPlayer();
-            newPlayer.steam64 = player.id
+        const playerId = BigInt(player.id)
+        if (!this.players.find(p => p.steam64 == playerId)) {
+            const newPlayer = defaultPlayer();
+            newPlayer.steam64 = playerId
             this.players.push(newPlayer)
         }
     }

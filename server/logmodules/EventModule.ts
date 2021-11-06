@@ -2,17 +2,22 @@
 import { events } from "logstf-parser";
 import { IGameState, PlayerInfo } from "logstf-parser";
 import { ILostUberAdvantageEvent } from "logstf-parser/lib/cjs/events";
-import { IMysqlEvent, defaultMysqlEvent } from '../DatabaseModel';
+import { defaultEvent } from '../DatabaseModelPrisma';
+import { Prisma } from '@prisma/client'
+import eventsCreateManyLogs = Prisma.eventsCreateManyLogsInput
+
+
 interface ISingleCapture extends events.IEvent {
     player: PlayerInfo,
     team: events.Team,
     pointId: number
 }
+
 export class EventsModule implements events.IStats {
     public identifier: string;
     private gameStartTime: number | null
     private gameState: IGameState
-    private mysqlEvents: IMysqlEvent[]
+    private mysqlEvents: eventsCreateManyLogs[]
     private kills: Map<string, number[]>
 
     constructor(gameState: IGameState) {
@@ -23,9 +28,10 @@ export class EventsModule implements events.IStats {
         this.kills = new Map<string, number[]>()
     }
 
-    private damageEventToMysql(event: events.IDamageEvent, mysql: IMysqlEvent) {
-        mysql.attacker = event.attacker.id
-        mysql.victim = event.victim?.id || null
+    private damageEventToMysql(event: events.IDamageEvent, mysql: eventsCreateManyLogs) {
+        mysql.attacker = BigInt(event.attacker.id)
+        if (event.victim)
+            mysql.victim = BigInt(event.victim.id)
         mysql.headshot = event.headshot
         mysql.airshot = event.airshot
         if (this.gameStartTime)
@@ -34,9 +40,10 @@ export class EventsModule implements events.IStats {
         return mysql
     }
 
-    private killEventToMysql(event: events.IKillEvent, mysql: IMysqlEvent) {
-        mysql.attacker = event.attacker.id
-        mysql.victim = event.victim.id
+    private killEventToMysql(event: events.IKillEvent, mysql: eventsCreateManyLogs) {
+        mysql.attacker = BigInt(event.attacker.id)
+        if (event.victim)
+            mysql.victim = BigInt(event.victim.id)
         mysql.headshot = event.headshot
         mysql.airshot = event.airshot
         if (this.gameStartTime)
@@ -47,9 +54,10 @@ export class EventsModule implements events.IStats {
         return mysql
     }
 
-    private medicDeathEventToMysql(event: events.IMedicDeathEvent, mysql: IMysqlEvent) {
-        mysql.attacker = event.attacker.id
-        mysql.victim = event.victim.id
+    private medicDeathEventToMysql(event: events.IMedicDeathEvent, mysql: eventsCreateManyLogs) {
+        mysql.attacker = BigInt(event.attacker.id)
+        if (event.victim)
+            mysql.victim = BigInt(event.victim.id)
         mysql.medicDrop = event.isDrop
         if (this.gameStartTime)
             mysql.second = event.timestamp - this.gameStartTime
@@ -58,8 +66,8 @@ export class EventsModule implements events.IStats {
         return mysql
     }
 
-    private chargeEventToMysql(event: events.IChargeEvent, mysql: IMysqlEvent) {
-        mysql.attacker = event.player.id
+    private chargeEventToMysql(event: events.IChargeEvent, mysql: eventsCreateManyLogs) {
+        mysql.attacker = BigInt(event.player.id)
         if (this.gameStartTime)
             mysql.second = event.timestamp - this.gameStartTime
         mysql.chargeUsed = true
@@ -67,23 +75,23 @@ export class EventsModule implements events.IStats {
         return mysql
     }
 
-    private advLostEventToMysql(event: ILostUberAdvantageEvent, mysql: IMysqlEvent) {
-        mysql.attacker = event.player.id
+    private advLostEventToMysql(event: ILostUberAdvantageEvent, mysql: eventsCreateManyLogs) {
+        mysql.attacker = BigInt(event.player.id)
         if (this.gameStartTime)
             mysql.second = event.timestamp - this.gameStartTime
         mysql.advantageLost = event.time
         return mysql
     }
 
-    private captureEventToMysql(event: ISingleCapture, mysql: IMysqlEvent) {
-        mysql.attacker = event.player.id
+    private captureEventToMysql(event: ISingleCapture, mysql: eventsCreateManyLogs) {
+        mysql.attacker = BigInt(event.player.id)
         if (this.gameStartTime)
             mysql.second = event.timestamp - this.gameStartTime
         mysql.capture = event.pointId
         return mysql
     }
 
-    private getKillstreaks(events: IMysqlEvent[]) {
+    private getKillstreaks(events: eventsCreateManyLogs[]) {
         interface IKillstreak {
             steamid: string
             streak: number
@@ -113,8 +121,8 @@ export class EventsModule implements events.IStats {
         })
         killstreaks.sort((a, b) => a.time - b.time);
         for (const killstreak of killstreaks) {
-            const defEvent = defaultMysqlEvent();
-            defEvent.attacker = killstreak.steamid
+            const defEvent = defaultEvent();
+            defEvent.attacker = BigInt(killstreak.steamid)
             defEvent.killstreak = killstreak.streak
             defEvent.second = killstreak.time
             events.push(defEvent)
@@ -122,8 +130,8 @@ export class EventsModule implements events.IStats {
         return events
     }
 
-    private mergeEvents(events: IMysqlEvent[]): IMysqlEvent[] {
-        const mergedEvents: IMysqlEvent[] = []
+    private mergeEvents(events: eventsCreateManyLogs[]): eventsCreateManyLogs[] {
+        const mergedEvents: eventsCreateManyLogs[] = []
         let prevEvent;
         for (const eventId in events) {
             const event = events[eventId]
@@ -159,19 +167,24 @@ export class EventsModule implements events.IStats {
             this.gameStartTime = event.timestamp
     }
 
+    onMiniRoundStart(event: events.IRoundStartEvent) {
+        if (!this.gameStartTime)
+            this.gameStartTime = event.timestamp
+    }
+
     onDamage(event: events.IDamageEvent) {
         if (!this.gameState.isLive)
             return
         if (event.airshot || event.headshot) {
-            const mysqlEvent = defaultMysqlEvent();
+            const mysqlEvent = defaultEvent();
             this.mysqlEvents.push(this.damageEventToMysql(event, mysqlEvent));
         }
     }
 
     onKill(event: events.IKillEvent) {
-        if (!this.gameState.isLive)
-            return
-        const mysqlEvent = defaultMysqlEvent();
+        if (!this.gameState.isLive) return
+        if (event.feignDeath) return
+        const mysqlEvent = defaultEvent();
         this.mysqlEvents.push(this.killEventToMysql(event, mysqlEvent))
         let gameTime = 0
         if (this.gameStartTime) {
@@ -189,7 +202,7 @@ export class EventsModule implements events.IStats {
     onMedicDeath(event: events.IMedicDeathEvent) {
         if (!this.gameState.isLive)
             return
-        const mysqlEvent = defaultMysqlEvent();
+        const mysqlEvent = defaultEvent();
         this.mysqlEvents.push(this.medicDeathEventToMysql(event, mysqlEvent));
     }
 
@@ -203,7 +216,7 @@ export class EventsModule implements events.IStats {
                 timestamp: event.timestamp,
                 pointId: event.pointId
             });
-            const mysqlEvent = defaultMysqlEvent();
+            const mysqlEvent = defaultEvent();
             this.mysqlEvents.push(this.captureEventToMysql(singleCapture, mysqlEvent));
         }
     }
@@ -211,14 +224,14 @@ export class EventsModule implements events.IStats {
     onCharge(event: events.IChargeEvent) {
         if (!this.gameState.isLive)
             return
-        const mysqlEvent = defaultMysqlEvent();
+        const mysqlEvent = defaultEvent();
         this.mysqlEvents.push(this.chargeEventToMysql(event, mysqlEvent))
     }
 
     onLostUberAdv(event: events.ILostUberAdvantageEvent) {
         if (!this.gameState.isLive)
             return
-        const mysqlEvent = defaultMysqlEvent();
+        const mysqlEvent = defaultEvent();
         this.mysqlEvents.push(this.advLostEventToMysql(event, mysqlEvent))
     }
 
@@ -227,7 +240,7 @@ export class EventsModule implements events.IStats {
         this.getKillstreaks(this.mysqlEvents);
     }
 
-    toJSON(): IMysqlEvent[] {
+    toJSON(): eventsCreateManyLogs[] {
         return this.mysqlEvents;
     }
 }

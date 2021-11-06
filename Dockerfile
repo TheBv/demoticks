@@ -6,6 +6,8 @@ RUN npm install
 
 COPY . . 
 
+RUN npx prisma generate
+
 EXPOSE 4351
 
 RUN useradd -u 8877 demoticks

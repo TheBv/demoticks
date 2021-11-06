@@ -19,8 +19,8 @@ services:
     web:
         image: thebv/demoticks-node-app:latest
         #build: .
-        environment:
-          - sqlHost=demoticks_mysql
+        environment: 
+          DATABASE_URL: mysql://demoticksAdmin:password@demoticks_mysql:3306/demoticks
         external_links:
           - demoticks_mysql
         container_name: demoticks_web

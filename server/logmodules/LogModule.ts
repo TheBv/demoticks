@@ -1,7 +1,10 @@
 
 import { events } from "logstf-parser";
 import { IGameState, PlayerInfo } from "logstf-parser";
-import { defaultMysqlLog, IMysqlLog } from "../DatabaseModel";
+import { defaultLog } from "../DatabaseModelPrisma";
+import { logs as IMysqlLog } from '@prisma/client'
+
+
 interface IPlayerStats {
     team: string | null
     kills: number
@@ -53,7 +56,7 @@ export class LogModule implements events.IStats {
         this.totalLengthInSeconds = 0
         this.rounds = []
         this.gameStartTime = 0
-        this.mysqlLog = defaultMysqlLog()
+        this.mysqlLog = defaultLog()
         this.paused = false
     }
 
@@ -132,7 +135,7 @@ export class LogModule implements events.IStats {
             this.currentRoundTeams.Red.kills += 1
         }
     }
-    
+
     onDamage(event: events.IDamageEvent) {
         if (!this.gameState.isLive) return
         const attacker: IPlayerStats = this.getOrCreatePlayer(event.attacker)
@@ -187,17 +190,21 @@ export class LogModule implements events.IStats {
     }
 
     onPause(event: events.IPauseEvent) {
-        this.gameState.isLive = false
-        this.paused = true
-        this.currentRoundPausedStart = event.timestamp
+        if (this.gameState.isLive) {
+            this.gameState.isLive = false
+            this.paused = true
+            this.currentRoundPausedStart = event.timestamp
+        }
     }
 
     onUnpause(event: events.IUnpauseEvent) {
-        this.gameState.isLive = true
-        this.paused = false
-        if (this.currentRoundPausedStart > 0 && event.timestamp > this.currentRoundPausedStart) {
-            this.currentRoundPausedTime += event.timestamp - this.currentRoundPausedStart
-            this.currentRoundPausedStart = 0
+        if (this.paused) {
+            this.gameState.isLive = true
+            this.paused = false
+            if (this.currentRoundPausedStart > 0 && event.timestamp > this.currentRoundPausedStart) {
+                this.currentRoundPausedTime += event.timestamp - this.currentRoundPausedStart
+                this.currentRoundPausedStart = 0
+            }
         }
     }
     // Added to fix pause/unpause desync issues 

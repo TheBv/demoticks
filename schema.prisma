@@ -1,0 +1,111 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+//"mysql://demoticksAdmin:password@localhost:3306/demoticks"
+model duplicatelogids {
+  logid       Int  @id
+  duplicateof Int
+  logs        logs @relation(fields: [duplicateof], references: [logid], onDelete: Cascade, onUpdate: NoAction, map: "FK_duplicatelogs_logs")
+
+  @@index([duplicateof], map: "FK_duplicatelogs_logs")
+}
+
+model events {
+  eventid       BigInt   @id @default(autoincrement())
+  logid         Int
+  attacker      BigInt
+  victim        BigInt?
+  killstreak    Int?
+  headshot      Boolean?
+  airshot       Boolean?
+  medicDrop     Boolean?
+  second        Int
+  capture       Int?
+  kill          Boolean?
+  backstab      Boolean?
+  medicDeath    Boolean?
+  advantageLost Int?
+  chargeUsed    Boolean?
+  weapon        String?  @db.VarChar(30)
+  logs          logs     @relation(fields: [logid], references: [logid], onDelete: Cascade, onUpdate: NoAction, map: "FK_events_logs")
+
+  @@index([logid], map: "FK_events_logs")
+  @@index([attacker], map: "attacker_index")
+  @@index([victim], map: "victim_index")
+}
+
+model logs {
+  logid           Int               @id
+  date            Int
+  redPoints       Int?
+  bluePoints      Int?
+  timeTaken       Int?
+  playeramount    Int?
+  official        Boolean?          @default(false)
+  duplicatelogids duplicatelogids[]
+  events          events[]
+  plays_in        plays_in[]
+
+  @@unique([date, redPoints, bluePoints, timeTaken, playeramount], map: "duplicateLogs")
+}
+
+model maps {
+  logid   Int    @id
+  mapName String @db.VarChar(30)
+}
+
+model players {
+  steam64        BigInt     @id
+  etf2lName      String?    @db.VarChar(40)
+  ugcName        String?    @db.VarChar(40)
+  ozFortressName String?    @db.VarChar(40)
+  logstfName     String?    @db.VarChar(40)
+  updatedAt      DateTime?  @db.Date
+  name           String?    @db.VarChar(40)
+  plays_in       plays_in[]
+}
+
+model plays_classes {
+  plays_inId       BigInt
+  class            String   @db.VarChar(15)
+  kills            Int?
+  assists          Int?
+  deaths           Int?
+  damage           Int?
+  damageTaken      Int?
+  accuracy         Decimal? @db.Decimal(4, 2)
+  healsReceived    Int?
+  healsDistributed Int?
+  plays_in         plays_in @relation(fields: [plays_inId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "FK_plays_in_plays_classes")
+
+  @@unique([plays_inId, class], map: "oneClass")
+}
+
+model plays_in {
+  id               BigInt          @id @default(autoincrement())
+  steam64          BigInt?
+  logid            Int
+  blue             Boolean
+  kills            Int
+  assists          Int
+  deaths           Int
+  damage           Int
+  damageTaken      Int
+  healsReceived    Int
+  healsDistributed Int
+  ubers            Int
+  drops            Int
+  kritz            Int
+  class            String?         @db.VarChar(15)
+  logs             logs            @relation(fields: [logid], references: [logid], onDelete: Cascade, onUpdate: NoAction, map: "FK_plays_in_logs")
+  players          players?        @relation(fields: [steam64], references: [steam64], onDelete: NoAction, onUpdate: NoAction, map: "FK_plays_in_players")
+  plays_classes    plays_classes[]
+
+  @@unique([steam64, logid], map: "steam64")
+  @@index([logid], map: "FK_plays_in_logs")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}

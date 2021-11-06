@@ -1,6 +1,5 @@
 import { events } from "logstf-parser";
 import { IGameState, PlayerInfo } from "logstf-parser";
-import { defaultMysqlLog, IMysqlLog, IMysqlPlaysInClasses } from "../DatabaseModel";
 
 
 interface IClassStats {
