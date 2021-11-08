@@ -30,5 +30,4 @@ app.get('/', function (_req: express.Request, res: express.Response) {
 
 app.listen(config.port, () => {
     console.log(`Server is listening on port ${config.port}`);
-    console.log(process.env.DATABASE_URL)
 });
