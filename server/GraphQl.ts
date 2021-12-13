@@ -226,7 +226,7 @@ export const schema = new GraphQLSchema({
                     //TODO: Update the map-check part
                     const maxLogid = Math.max(...args.logid);
                     const primaryAttacker = args.events[0].attacker
-                    const mapValues = queryWithCache(mapidCache, [primaryAttacker, maxLogid], {
+                    const mapValues = await queryWithCache(mapidCache, [primaryAttacker, maxLogid], {
                         where: {
                             logid: maxLogid
                         }
