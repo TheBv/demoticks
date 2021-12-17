@@ -192,14 +192,18 @@ async function getLogsTfResponse(steamIds, retries = 5) {
             await sleep(1000);
             return getLogsTfResponse(steamIds, retries - 1);
         }
+        else {
+            alert("Logs.tf's api did not respond\n Please try again later");
+        }
     });
     if (data["success"] === true) {
         return data;
     }
     return new Promise.reject(ResponseIssues.noResponse);
 }
+
 function sleep(ms) {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
         setTimeout(resolve, ms);
     });
 }
