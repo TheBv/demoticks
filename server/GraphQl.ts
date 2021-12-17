@@ -47,39 +47,51 @@ const eventType = new GraphQLObjectType({
         },
         killstreak: {
             type: GraphQLInt,
+            description: 'The killstreak length querried as >='
         },
         headshot: {
             type: GraphQLBoolean,
+            description: 'Wether the event should contain a headshot or not'
         },
         airshot: {
             type: GraphQLBoolean,
+            description: 'Wether the event should contain an airshot or not'
         },
         medicDrop: {
             type: GraphQLBoolean,
+            description: 'Wether the event should contain a medic drop or not'
         },
         second: {
             type: GraphQLNonNull(GraphQLInt),
+            description: 'The amount of seconds after the game started the event occured'
         },
         capture: {
             type: GraphQLInt,
+            description: 'The point id of a captured point'
         },
         kill: {
             type: GraphQLBoolean,
+            description: 'Wether the event should contain a kill or not'
         },
         backstab: {
             type: GraphQLBoolean,
+            description: 'Wether the event should contain a backstab or not'
         },
         medicDeath: {
             type: GraphQLBoolean,
+            description: 'Wether the event should contain a medic death or not'
         },
         advantageLost: {
             type: GraphQLInt,
+            description: 'Specifies if the amount of seconds an advantage has been lost is >= some threshold'
         },
         chargeUsed: {
             type: GraphQLBoolean,
+            description: 'Wether the event should contain a charge being used or not'
         },
         weapon: {
             type: GraphQLString,
+            description: 'The string of the weapon used when the event was triggered'
         }
     }
 });
@@ -93,28 +105,36 @@ const logType = new GraphQLObjectType({
             description: 'The corresponding logid'
         },
         date: {
-            type: GraphQLInt
+            type: GraphQLInt,
+            description: 'The unix timestamp the game has ended'
         },
         map: {
-            type: GraphQLString
+            type: GraphQLString,
+            description: 'The map name of the game retrieved from logs.tf'
         },
         redPoints: {
-            type: GraphQLInt
+            type: GraphQLInt,
+            description: 'The amount of points the red team scored'
         },
         bluePoints: {
-            type: GraphQLInt
+            type: GraphQLInt,
+            description: 'The amount of points the blue team scored'
         },
         timeTaken: {
-            type: GraphQLInt
+            type: GraphQLInt,
+            description: 'The length of the game'
         },
         playeramount: {
-            type: GraphQLInt
+            type: GraphQLInt,
+            description: 'The amount of players that at some point entered and played in the game'
         },
         official: {
-            type: GraphQLBoolean
+            type: GraphQLBoolean,
+            description: 'Weither the game was an official or not **CURRENTLY UNUSED**'
         },
         events: {
-            type: GraphQLList(eventType)
+            type: GraphQLList(eventType),
+            description: 'A list of game events that occured in that match given the search querries'
         }
     }
 })
@@ -157,7 +177,7 @@ const eventInput = new GraphQLInputObjectType({
         },
         second: {
             type: GraphQLInt,
-            description: 'The second the event occured'
+            description: 'The amount of seconds after the game started the event occured'
         },
         capture: {
             type: GraphQLInt,
@@ -165,21 +185,27 @@ const eventInput = new GraphQLInputObjectType({
         },
         kill: {
             type: GraphQLBoolean,
+            description: 'Wether the event should contain a kill or not'
         },
         backstab: {
             type: GraphQLBoolean,
+            description: 'Wether the event should contain a backstab or not'
         },
         medicDeath: {
             type: GraphQLBoolean,
+            description: 'Wether the event should contain a medic death or not'
         },
         advantageLost: {
             type: GraphQLInt,
+            description: 'Specifies if the amount of seconds an advantage has been lost is >= some threshold'
         },
         chargeUsed: {
             type: GraphQLBoolean,
+            description: 'Wether the event should contain a charge being used or not'
         },
         weapon: {
             type: GraphQLString,
+            description: 'The string of the weapon used when the event was triggered'
         }
     }
 })
@@ -311,7 +337,7 @@ export const schema = new GraphQLSchema({
                             console.error(err)
                         }
                     }
-                    //If a we're doing a general name lookup use that
+                    //If we're doing a general name lookup use that
                     if (args.name) {
                         return queryWithCacheMany(nameMatchCache, args.name, {
                             where: {
