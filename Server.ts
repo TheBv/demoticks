@@ -1,6 +1,6 @@
 import express from 'express';
 const app = express();
-import graphqlHTTP from 'express-graphql';
+import { graphqlHTTP } from 'express-graphql';
 import cors from 'cors';
 import cron from 'cron';
 import { schema } from './server/GraphQl';

@@ -2,8 +2,9 @@ import { GraphQLBoolean, GraphQLInputObjectType, GraphQLInt, GraphQLList, GraphQ
 import { batchParseLogs, updateMapTable, updatePlayer } from "./DatabaseHelper";
 import SteamID from "steamid";
 import LRU from 'lru-cache';
-import { PrismaClient, events, players } from '@prisma/client'
+//import { PrismaClient, events, players } from '@prisma/client'
 import { GraphQLBigInt } from './GraphQLBigInt'
+import { events, players, PrismaClient } from "@prisma/client";
 
 //TODO: update query to include custom Op's
 //TODO: return reasons: {success,markedAsDuplicate,duplicate,parsingError+reason}
@@ -30,15 +31,15 @@ const eventType = new GraphQLObjectType({
     description: 'An Event',
     fields: {
         eventid: {
-            type: GraphQLNonNull(GraphQLBigInt),
+            type: new GraphQLNonNull(GraphQLBigInt),
             description: 'The internal event id'
         },
         logid: {
-            type: GraphQLNonNull(GraphQLInt),
+            type: new GraphQLNonNull(GraphQLInt),
             description: 'The corresponding logid'
         },
         attacker: {
-            type: GraphQLNonNull(GraphQLBigInt),
+            type: new GraphQLNonNull(GraphQLBigInt),
             description: 'The steam64 id from the attacker'
         },
         victim: {
@@ -62,7 +63,7 @@ const eventType = new GraphQLObjectType({
             description: 'Wether the event should contain a medic drop or not'
         },
         second: {
-            type: GraphQLNonNull(GraphQLInt),
+            type: new GraphQLNonNull(GraphQLInt),
             description: 'The amount of seconds after the game started the event occured'
         },
         capture: {
@@ -101,7 +102,7 @@ const logType = new GraphQLObjectType({
     description: 'A Log',
     fields: {
         logid: {
-            type: GraphQLNonNull(GraphQLInt),
+            type: new GraphQLNonNull(GraphQLInt),
             description: 'The corresponding logid'
         },
         date: {
@@ -133,7 +134,7 @@ const logType = new GraphQLObjectType({
             description: 'Weither the game was an official or not **CURRENTLY UNUSED**'
         },
         events: {
-            type: GraphQLList(eventType),
+            type: new GraphQLList(eventType),
             description: 'A list of game events that occured in that match given the search querries'
         }
     }
@@ -237,22 +238,23 @@ export const schema = new GraphQLSchema({
         name: 'Query',
         fields: {
             event: {
-                type: GraphQLList(logType),
+                type: new GraphQLList(logType),
                 args: {
                     logid: {
-                        type: GraphQLNonNull(GraphQLList(GraphQLNonNull(GraphQLInt))),
+                        type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLInt))),
                         description: 'The corresponding logid'
                     },
                     events: {
-                        type: GraphQLNonNull(GraphQLList(GraphQLNonNull(eventInput)))
+                        type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(eventInput)))
                     }
 
                 },
                 resolve: async (parent: any, args: any) => {
                     //TODO: Update the map-check part
                     const maxLogid = Math.max(...args.logid);
-                    const primaryAttacker = args.events[0].attacker
-                    const mapValues = await queryWithCache(mapidCache, [primaryAttacker, maxLogid], {
+                    const primaryAttacker : string = args.events[0].attacker
+                    const key : [string, number] = [primaryAttacker, maxLogid]
+                    const mapValues = await queryWithCache(mapidCache, key, {
                         where: {
                             logid: maxLogid
                         }
@@ -291,7 +293,7 @@ export const schema = new GraphQLSchema({
                 }
             },
             player: {
-                type: GraphQLList(player),
+                type: new GraphQLList(player),
                 args: {
                     steam64: {
                         type: GraphQLBigInt
@@ -354,10 +356,10 @@ export const schema = new GraphQLSchema({
                 }
             },
             addLog: {
-                type: GraphQLList(GraphQLBoolean),
+                type: new GraphQLList(GraphQLBoolean),
                 args: {
                     logid: {
-                        type: GraphQLNonNull(GraphQLList(GraphQLNonNull(GraphQLInt)))
+                        type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLInt)))
                     }
                 },
                 resolve: async (parent: any, args: any) => {
