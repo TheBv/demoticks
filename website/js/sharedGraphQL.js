@@ -111,6 +111,7 @@ const getPlayers = function () { //Needs updating
     return new Promise(function (resolve, reject) {
         const playerarray = [];
         const table = $("#playerTable").children("tbody")[0];
+        console.log(table)
         new Promise(function (resolve, reject) {
             const promises = [];
             $.each(table.rows, function (player) {

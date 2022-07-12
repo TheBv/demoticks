@@ -3,7 +3,7 @@ var returnedPlayers = new Object();
 var idToDemoName = new Map();
 var searchQuery = new SearchQuery();
 var result;
-
+var players = []
 autoSelectTimezone();
 disableButtons();
 $(function () {
@@ -127,7 +127,6 @@ async function getFileEvents() {
         await addEvents(searchQuery.logIds, 20);
 
         result = await queryData(searchQuery.toQuery());
-        console.log(result);
         if (result !== undefined) {
             result = result.event;
             const eventArray = searchQuery.events;
@@ -144,7 +143,6 @@ async function getFileEvents() {
                 titleRow.push(`<a class="button remove" onclick="removeTitle(this,${entryIndex});delete result[${entryIndex}]">-</a>`);
                 eventTable.addRow(titleRow, ["", ""], "boxfancy tableheading");
                 for (values in entry.events) {
-                    console.log(values);
                     if (values >= 1) {
                         if (entry.events[values]["attacker"] !== entry.events[values - 1]["attacker"]) {
                             eventTable.addRow([getPlayerName(entry.events[values]["attacker"].toString())], [""], "boxfancy tabledata");
