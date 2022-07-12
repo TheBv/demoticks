@@ -3,7 +3,6 @@ var returnedPlayers = new Object();
 var idToDemoName = new Map();
 var searchQuery = new SearchQuery();
 var result;
-var players = []
 autoSelectTimezone();
 disableButtons();
 $(function () {

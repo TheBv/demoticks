@@ -1,4 +1,6 @@
-﻿class SearchQuery {
+﻿var players = [];
+
+class SearchQuery {
     attackers = []; //array of steamIds
     victims = []; //array of steamIds
     logIds = []; //array of logIds

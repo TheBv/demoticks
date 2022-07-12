@@ -1,5 +1,4 @@
-﻿var players = [];
-let returnedPlayers = new Object();
+﻿let returnedPlayers = new Object();
 const searchQuery = new SearchQuery();
 let test = "";
 insertPlayers();
