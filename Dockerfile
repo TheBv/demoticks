@@ -2,7 +2,7 @@ FROM node:16.8
 
 COPY package.json ./
 
-RUN npm install 
+RUN npm install --force
 
 COPY . . 
 
