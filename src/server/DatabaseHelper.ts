@@ -1,10 +1,11 @@
 import axios from 'axios';
 import JSZip from 'jszip';
-import { parseAndPopulateDatabase } from './LogParsing'
+import { IJsonLogData, parseAndPopulateDatabaseJson } from './LogParsing'
 import { fetchName, fetchNames } from './FetchNames'
 import { defaultMap, defaultPlayer } from "./DatabaseModelPrisma";
 import { players, PrismaClient, maps } from "@prisma/client";
-
+import { StaticPool } from "node-worker-threads-pool";
+import { config } from '../../config';
 
 const prisma = new PrismaClient()
 
@@ -29,7 +30,6 @@ export async function updatePlayer(steam64: string): Promise<boolean> {
     });
     return true;
 }
-
 
 export async function updatePlayers(players: players[]): Promise<boolean> {
     await fetchNames(players);
@@ -66,22 +66,33 @@ export async function updateMapTable(steam64: string, limit: number): Promise<bo
 }
 
 export async function batchParseLogs(logid: number[]): Promise<boolean[]> {
+    const id = Math.random();
     const requests: Promise<boolean>[] = []
     for (const log of logid) {
         requests.push(parseLog(log));
     }
     const results: boolean[] = [];
     const promiseResults = await Promise.allSettled(requests);
+
     promiseResults.forEach((promiseSettled) => {
         if (promiseSettled.status === 'rejected') {
             console.error("Failed to parse logfile. Reason:\n ", promiseSettled.reason)
             results.push(false);
         }
         else {
-            results.push(promiseSettled.value);
+            results.push(/*promiseSettled.value*/true);
         }
     })
     return results;
+}
+
+const staticPool = new StaticPool({
+    size: config.workerThreads,
+    task: __dirname + "/parsers/ParseLog.js",
+});
+
+async function pushLog(lines: string[]) : Promise<IJsonLogData> {
+    return staticPool.exec(lines);
 }
 
 export async function parseLog(logid: number): Promise<boolean> {
@@ -92,8 +103,9 @@ export async function parseLog(logid: number): Promise<boolean> {
         if (log1) {
             const log = await log1.async("text");
             const logLines = log.split("\n")
-            return await parseAndPopulateDatabase(logLines, logid);
-
+            const result = await pushLog(logLines);
+            result.game.logid = logid;
+            return await parseAndPopulateDatabaseJson(result, logid)
         }
     } catch (error) {
         console.error(`Failed to parse logfile with id ${logid}. Reason:\n `, error);

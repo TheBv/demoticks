@@ -1,8 +1,10 @@
-FROM node:16.8
+FROM node:18.11
+
+WORKDIR /src
 
 COPY package.json ./
 
-RUN npm install --force
+RUN npm install
 
 COPY . . 
 
@@ -10,8 +12,4 @@ RUN npx prisma generate
 
 EXPOSE 4351
 
-RUN useradd -u 8877 demoticks
-
-USER demoticks
-
-CMD ["npm","run","start"]
+CMD ["npm","run","docker"]

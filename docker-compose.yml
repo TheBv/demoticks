@@ -2,8 +2,6 @@ version: '3'
 services:
     db:
         image: mysql:8.0
-        volumes:
-          - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
         environment:
           MYSQL_ROOT_PASSWORD: password
           MYSQL_DATABASE: demoticks 
@@ -16,6 +14,10 @@ services:
         container_name: demoticks_mysql
         networks: 
           - demoticks_net
+        healthcheck:
+          test: ["CMD-SHELL", "mysql -h 127.0.0.1 -u $$MYSQL_USER -p$$MYSQL_PASSWORD -e 'SHOW DATABASES;'"]
+          interval: 5s
+          timeout: 5s
     web:
         image: thebv/demoticks-node-app:latest
         #build: .
@@ -29,7 +31,8 @@ services:
         ports:
           - "4351:4351"
         depends_on:
-          - "db"
+          db:
+            condition: service_healthy
 networks: 
     demoticks_net:
         internal: false

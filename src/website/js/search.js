@@ -198,7 +198,34 @@ async function getLogsTfResponse(steamIds, retries = 5) {
     if (data["success"] === true) {
         return data;
     }
-    return new Promise.reject(ResponseIssues.noResponse);
+    return Promise.reject(ResponseIssues.noResponse);
+}
+
+async function getTrendsTfResponse(steamIds, offset=0, retries=5) {
+    const fromDate = $("#startdate")[0].value;
+    const toDate = $("#enddate")[0].value;
+    if (offset > 400)
+        return []
+    if (retries <= 0) {
+        return Promise.reject(ResponseIssues.noRetry);
+    }
+    console.log(`/api/player/${steamIds.map((id)=> `steamid64=${id}&`).join("")}`);
+    const data = await $.getJSON(`/api/player?time_from=${dateTimeToUnix(fromDate)}&time_to=${dateTimeToUnix(toDate)}&offset=${offset}&${steamIds.map((id)=> `steamid64=${id}&`).join("")}`).catch(async err => {
+        if (err.getAllResponseHeaders() === "") {
+            await sleep(1000);
+            return getTrendsTfResponse(steamIds, offset, retries - 1);
+        }
+        else {
+            alert("Logs.tf's api did not respond\n Please try again later");
+        }
+    });
+    if (data["next_page"]) {
+        const ret = [...data["logs"],...(await getTrendsTfResponse(steamIds, offset+100))]
+        return ret
+    } else if (data["logs"] !== undefined){
+        return data["logs"]
+    }
+    return Promise.reject(ResponseIssues.noResponse);
 }
 
 function sleep(ms) {
@@ -219,7 +246,7 @@ function getLogs() {
             }
             if (steamIds.length !== 0) {
 
-                const data = await getLogsTfResponse(steamIds).catch(err => {
+                const data = await getTrendsTfResponse(steamIds).catch(err => {
                     if (err === ResponseIssues.noResponse) {
                         alert("Invalid Input");
                         reject(err);
@@ -233,15 +260,14 @@ function getLogs() {
                         reject();
                     }
                 });
-                logloop: for (const index in data["logs"]) { //iterate through each log
-                    if (data["logs"][index]["date"] * 1000 >= dateTimeToUnixJS(fromDate) &&
-                        data["logs"][index]["date"] * 1000 <= dateTimeToUnixJS(toDate) && //if the logs are withing the specified timeframe
-                        playerAmountNotExcluded(data["logs"][index]["players"])) {
-
-                        logs.push(data["logs"][index]["id"]);
+                console.log(data)
+                for (const log of data) { //iterate through each log
+                    if (log["time"] * 1000 >= dateTimeToUnixJS(fromDate) &&
+                    log["time"] * 1000 <= dateTimeToUnixJS(toDate) &&  log["format"]) {
+                        logs.push(log["logid"]);
                     }
-                    if (data["logs"][index]["date"] * 1000 < dateTimeToUnixJS(fromDate)) {
-                        break logloop;
+                    if (log["time"] * 1000 < dateTimeToUnixJS(fromDate)) {
+                        break;
                     }
                 }
                 logs = logs.slice(0, 400); //Limit the amount of logs sent to the database
@@ -256,6 +282,23 @@ function getLogs() {
         });
     });
 }
+
+function formatNotExcluded(format) {
+    const cb2v2Value = $("#2v2")[0].checked;
+    const cb6v6Value = $("#6v6")[0].checked;
+    const cb9v9Value = $("#9v9")[0].checked;
+    if (!cb2v2Value && (format == "ultiduo" || format == "fours")) {
+        return true;
+    }
+    else if (!cb6v6Value && (format == "sixes" || format == "prolander")) {
+        return true;
+    }
+    else if (!cb9v9Value && format == "highlander") {
+        return true;
+    }
+    else { return false; }
+}
+
 //return true if the log file with the amount of players shouldn't be excluded otherwise false
 function playerAmountNotExcluded(playeramount) {
     const cb2v2Value = $("#2v2")[0].checked;
@@ -287,7 +330,7 @@ async function startSearch() {
         return 0;
     }
     searchQuery.setLogIds(logs);
-    await addEvents(searchQuery.logIds, 40, updateCount);
+    await addEvents(searchQuery.logIds, 80, updateCount);
     let queryResults = await queryData(searchQuery.toQuery()).catch(error => {
         if (error === SyntaxError) {
             alert("Something with the selected data is wrong.");

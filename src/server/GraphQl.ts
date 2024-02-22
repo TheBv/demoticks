@@ -1,10 +1,9 @@
 import { GraphQLBoolean, GraphQLInputObjectType, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLSchema, GraphQLString } from "graphql";
 import { batchParseLogs, updateMapTable, updatePlayer } from "./DatabaseHelper";
 import SteamID from "steamid";
-import LRU from 'lru-cache';
-//import { PrismaClient, events, players } from '@prisma/client'
+import { LRUCache } from 'lru-cache';
 import { GraphQLBigInt } from './GraphQLBigInt'
-import { events, players, PrismaClient } from "@prisma/client";
+import { events, players, Prisma, PrismaClient } from "@prisma/client";
 
 //TODO: update query to include custom Op's
 //TODO: return reasons: {success,markedAsDuplicate,duplicate,parsingError+reason}
@@ -13,18 +12,19 @@ import { events, players, PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient()
 
 const opMap = new Map<string, any>();
+opMap.set("airshot", "gte")
 opMap.set("killstreak", "gte");
 opMap.set("advantageLost", "gte")
 opMap.set("weapon", "like")
 
 
-const nameMatchCache = new LRU<string, players[]>({ max: 500, maxAge: 1000 * 60 * 4 });
+const nameMatchCache = new LRUCache<string, players[]>({ max: 500, ttl: 1000 * 60 * 4 });
 
-const steamNameCache = new LRU<BigInt, players>({ max: 500, maxAge: 1000 * 60 * 60 });
+const steamNameCache = new LRUCache<BigInt, players>({ max: 500, ttl: 1000 * 60 * 60 });
 
-const mapidCache = new LRU<[string, number], number>({ max: 10000, maxAge: 1000 * 60 * 5 });
+const mapidCache = new LRUCache<[string, number], number>({ max: 10000, ttl: 1000 * 60 * 5 });
 
-const logidCache = new LRU<number, boolean>({ max: 10000 });
+const logidCache = new LRUCache<number, boolean>({ max: 10000 });
 
 const eventType = new GraphQLObjectType({
     name: 'Event',
@@ -55,7 +55,7 @@ const eventType = new GraphQLObjectType({
             description: 'Wether the event should contain a headshot or not'
         },
         airshot: {
-            type: GraphQLBoolean,
+            type: GraphQLInt,
             description: 'Wether the event should contain an airshot or not'
         },
         medicDrop: {
@@ -169,7 +169,7 @@ const eventInput = new GraphQLInputObjectType({
             description: 'Wether the event should contain a headshot or not'
         },
         airshot: {
-            type: GraphQLBoolean,
+            type: GraphQLInt,
             description: 'Wether the event should contain an airshot or not'
         },
         medicDrop: {
@@ -350,7 +350,7 @@ export const schema = new GraphQLSchema({
                     //Otherwise for every org name
                     return await prisma.players.findMany({
                         where: {
-                            OR: getPlayerData(args)
+                            OR: [getPlayerData(args)]
                         }
                     })
                 }
@@ -396,7 +396,7 @@ export const schema = new GraphQLSchema({
     }),
 });
 
-async function queryWithCache<K, V>(cache: LRU<K, V>, key: K, query: any, table: any): Promise<V> {
+async function queryWithCache<K extends {}, V extends {}>(cache: LRUCache<K, V>, key: K, query: any, table: any): Promise<V> {
     if (cache.get(key) != undefined)
         return cache.get(key)!
     const dbResult = await table.findFirst(query);
@@ -405,7 +405,7 @@ async function queryWithCache<K, V>(cache: LRU<K, V>, key: K, query: any, table:
     return dbResult
 }
 
-async function queryWithCacheMany<K, V>(cache: LRU<K, V>, key: K, query: any, table: any): Promise<V> {
+async function queryWithCacheMany<K extends {}, V extends {}>(cache: LRUCache<K, V>, key: K, query: any, table: any): Promise<V> {
     if (cache.get(key) != undefined)
         return cache.get(key)!
     const dbResult = await table.findMany(query);
@@ -415,10 +415,7 @@ async function queryWithCacheMany<K, V>(cache: LRU<K, V>, key: K, query: any, ta
 }
 
 function getPlayerData(args: any) {
-    interface LooseObject {
-        [key: string]: any
-    }
-    const data: LooseObject = {};
+    const data: Prisma.playersWhereInput = {};
 
     if (args.etf2lName) {
         data.etf2lName = { contains: args.etf2lName }

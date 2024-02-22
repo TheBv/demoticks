@@ -4,21 +4,74 @@ import { LogModule } from "./logmodules/LogModule";
 import { PlaysInModule } from "./logmodules/PlaysInModule";
 import { PlayerModule } from "./logmodules/PlayerModule";
 import { PlayerClassModule } from "./logmodules/PlayerClassModule";
-import { PrismaClient } from '@prisma/client'
-
+import { PrismaClient, logs as IMysqlLog, Prisma } from '@prisma/client'
+import { Game } from "logstf-parser/lib/cjs/Game";
 
 const prisma = new PrismaClient()
-const parser = new LogParser()
-parser.useCustomGameState();
-parser.addModule(LogModule);
-parser.addModule(PlayerModule);
-parser.addModule(EventsModule);
-//parser.addModule(PlayerClassModule);
-parser.addModule(PlaysInModule);
-parser.useSteam64Id();
 
-export async function parseAndPopulateDatabase(lines: string[], logid: number): Promise<boolean> {
-    const game = parser.parseLines(lines);
+export interface IJsonLogData {
+    playsIn: Prisma.plays_inCreateManyInput[],
+    events: Prisma.eventsCreateManyInput[],
+    game: IMysqlLog,
+    players: Prisma.playersCreateManyInput[]
+}
+
+export async function parseAndPopulateDatabaseJson(json: IJsonLogData, logid: number): Promise<boolean> {
+    await prisma.players.createMany({ data: json.players, skipDuplicates: true })
+    
+    const logData = json.game
+    logData.logid = logid;
+    const playsInData = json.playsIn;
+    const eventsData = json.events;
+    try {
+        await prisma.logs.create({
+            data: {
+                logid: logData.logid,
+                date: logData.date,
+                redPoints: logData.redPoints,
+                bluePoints: logData.bluePoints,
+                timeTaken: logData.timeTaken,
+                playeramount: logData.playeramount,
+                official: logData.official,
+                plays_in: {
+                    createMany: {
+                        data: playsInData
+                    }
+                },
+                events: {
+                    createMany: {
+                        data: eventsData
+                    }
+                }
+            }
+        });
+    }
+    catch (err: any) {
+        if (err.code == 'P2002' && err.meta.target == 'duplicateLogs') {
+            prisma.logs.findFirst({
+                where: {
+                    date: logData.date,
+                    redPoints: logData.redPoints,
+                    bluePoints: logData.bluePoints,
+                    timeTaken: logData.timeTaken,
+                    playeramount: logData.playeramount
+                }
+            }).then((value) => {
+                if (!value) return
+                prisma.duplicatelogids.create({ data: { logid: logid, duplicateof: value.logid } })
+            }).catch(err => { console.error(err); return false });
+            return true;
+        }
+        else {
+            console.error(err);
+            return false;
+        }
+    }
+    // TODO: playerClassModule
+    return true
+}
+
+export async function parseAndPopulateDatabaseGame(game: Game, logid: number): Promise<boolean> {
     const logModule = game.modules.find(a => { return a instanceof LogModule })
     const playerModule = game.modules.find(a => { return a instanceof PlayerModule })
     const eventsModule = game.modules.find(a => { return a instanceof EventsModule })

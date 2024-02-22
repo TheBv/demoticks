@@ -18,7 +18,7 @@ model events {
   victim        BigInt?
   killstreak    Int?
   headshot      Boolean?
-  airshot       Boolean?
+  airshot       Int?
   medicDrop     Boolean?
   second        Int
   capture       Int?
@@ -104,6 +104,11 @@ model plays_in {
 
   @@unique([steam64, logid], map: "steam64")
   @@index([logid], map: "FK_plays_in_logs")
+}
+
+model parsed_logs {
+  id    Int   @id
+  json  Json
 }
 
 generator client {

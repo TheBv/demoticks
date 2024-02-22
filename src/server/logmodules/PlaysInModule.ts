@@ -67,7 +67,7 @@ export class PlaysInModule implements events.IStats {
     private currentSpawntimes: Map<string, number>
 
     constructor(gameState: IGameState) {
-        this.identifier = 'players'
+        this.identifier = 'playsIn'
         this.players = {}
         this.classes = new Map<string, Map<string, IClassStats>>()
         this.internalStats = {}

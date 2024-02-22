@@ -8,7 +8,8 @@
         "lib": ["es2020"],
         "strict": true,
         "outDir": "build",
-        "sourceMap": true
+        "sourceMap": true,
+        "sourceRoot": "src"
     },
-    "files": ["Server.ts"]
+    "files": ["src/Server.ts"]
 }

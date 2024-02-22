@@ -54,7 +54,7 @@ class Event {
     EventsI = new Map(Object.entries({
         KS: "killstreak : 3",
         HS: "headshot : true",
-        AS: "airshot : true",
+        AS: "airshot : 1",
         MD: "medicDrop : true",
         BS: "backstab : true",
         MK: "medicDeath : true",

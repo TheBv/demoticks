@@ -1,6 +1,6 @@
-import { players, maps, events, logs, Prisma } from '@prisma/client'
-import plays_inCreateManyLogs = Prisma.plays_inCreateManyLogsInput
-import eventsCreateManyLogs = Prisma.eventsCreateManyLogsInput
+import { players, maps, logs, Prisma } from '@prisma/client'
+import plays_inCreateManyLogsInput = Prisma.plays_inCreateManyLogsInput
+import eventsCreateManyLogsInput = Prisma.eventsCreateManyLogsInput
 
 
 export const defaultPlayer = (): players => ({
@@ -18,12 +18,12 @@ export const defaultMap = (): maps => ({
     logid: -1
 })
 
-export const defaultEvent = (): eventsCreateManyLogs => ({
+export const defaultEvent = (): eventsCreateManyLogsInput => ({
     attacker: BigInt(-1),
     victim: null,
     killstreak: null,
     headshot: false,
-    airshot: false,
+    airshot: 0,
     medicDrop: false,
     second: -1,
     capture: null,
@@ -34,8 +34,8 @@ export const defaultEvent = (): eventsCreateManyLogs => ({
     chargeUsed: false,
     weapon: null
 })
-export const defaultPlaysIn = (): plays_inCreateManyLogs => ({
-    steam64!: BigInt(-1),
+export const defaultPlaysIn = (): plays_inCreateManyLogsInput => ({
+    steam64: BigInt(-1),
     blue: false,
     kills: 0,
     assists: 0,
@@ -50,7 +50,7 @@ export const defaultPlaysIn = (): plays_inCreateManyLogs => ({
     class: null
 })
 export const defaultLog = (): logs => ({
-    logid!: -1,
+    logid: -1,
     date: -1,
     redPoints: -1,
     bluePoints: -1,

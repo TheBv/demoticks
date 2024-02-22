@@ -14,16 +14,15 @@ interface ISingleCapture extends events.IEvent {
 }
 
 export class EventsModule implements events.IStats {
-    public identifier: string;
+    public identifier: string
     private gameStartTime: number | null
     private gameState: IGameState
     private mysqlEvents: eventsCreateManyLogs[]
     private kills: Map<string, number[]>
-
     constructor(gameState: IGameState) {
-        this.identifier = 'Events'
+        this.identifier = 'events'
         this.gameStartTime = null
-        this.gameState = gameState;
+        this.gameState = gameState
         this.mysqlEvents = []
         this.kills = new Map<string, number[]>()
     }
@@ -33,7 +32,8 @@ export class EventsModule implements events.IStats {
         if (event.victim)
             mysql.victim = BigInt(event.victim.id)
         mysql.headshot = event.headshot
-        mysql.airshot = event.airshot
+        if (event.airshot)
+            mysql.airshot = event.height ? event.height : 1
         if (this.gameStartTime)
             mysql.second = event.timestamp - this.gameStartTime
         mysql.weapon = event.weapon || null
@@ -45,7 +45,6 @@ export class EventsModule implements events.IStats {
         if (event.victim)
             mysql.victim = BigInt(event.victim.id)
         mysql.headshot = event.headshot
-        mysql.airshot = event.airshot
         if (this.gameStartTime)
             mysql.second = event.timestamp - this.gameStartTime
         mysql.kill = true
