@@ -42,8 +42,11 @@ app.get('/api/player', async (req: express.Request, res: express.Response) => {
 
 app.get('/api/parse/:logid', async (req: express.Request, res: express.Response) => {
     const logid = req.params.logid;
-    if (isNaN(parseInt(logid))) {
-        res.status(400).send("Invalid logid");
+    if (isNaN(Number(logid))) {
+        res.status(400).send({
+          success: false,
+          reason: "Invalid logid"
+        });
         return;
     }
     const value = await prisma.parsed_logs.findFirst({ where: { id: parseInt(logid) } })
@@ -53,6 +56,10 @@ app.get('/api/parse/:logid', async (req: express.Request, res: express.Response)
     }
 
     const result = await parseLog(parseInt(logid));
+    if (result.success === false && result.statusCode != 404) {
+        res.status(404).send(result.reason);
+        return;
+    }
     await prisma.parsed_logs.create({ data: { id: parseInt(logid), json: result } });
     res.send(result);
 });

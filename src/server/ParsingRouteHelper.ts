@@ -1,5 +1,5 @@
 import { StaticPool } from 'node-worker-threads-pool';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import JSZip from 'jszip';
 import './parsers/ParseLogDefault';
 import { config } from '../../config';
@@ -25,8 +25,18 @@ export async function parseLog(logid: number): Promise<any> {
             return result;
         }
     } catch (error) {
-        console.error(`Failed to parse logfile with id ${logid}. Reason:\n `, error);
-        return false;
+        if (!(error instanceof AxiosError)) {
+            console.error(`Couldn't fetch zip file with id ${logid}. Reason:\n `, error);
+        }
+        return {
+            success: false,
+            statusCode: error instanceof AxiosError ? (error as AxiosError).response?.status : undefined,
+            reason: 'Couldn\'t fetch zip file'
+        };
+
     }
-    return false;
+    return {
+        success: false,
+        reason: 'Corrupt zip file'
+    };
 }
